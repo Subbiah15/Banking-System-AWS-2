@@ -1,33 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../components/AppLayout'
 import { useAuth } from '../context/AuthContext'
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
+  createCustomer,
   listAdminAccounts,
   listAllUsers,
   listAudit,
-  setKyc,
   tellerDeposit,
-  type KycStatus,
+  type CreateCustomerPayload,
 } from '../lib/admin'
+import type { AccountType, DemoBank } from '../lib/accounts'
 import { formatDateTime, formatMoney } from '../lib/format'
 import { apiErrorMessage } from '../lib/errors'
 
-const KYC_STYLES: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  VERIFIED: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
+const BANK_LABELS: Record<DemoBank, string> = {
+  SBI: 'SBI',
+  IOB: 'Indian Overseas Bank',
+  HDFC: 'HDFC Bank',
+  ICICI: 'ICICI Bank',
+  AXIS: 'Axis Bank',
 }
 
 export default function AdminPage() {
   const { user } = useAuth()
-  const qc = useQueryClient()
   const usersQ = useQuery({ queryKey: ['admin-users'], queryFn: listAllUsers, enabled: user?.role === 'ADMIN' })
-
-  const kycM = useMutation({
-    mutationFn: ({ userId, status }: { userId: string; status: KycStatus }) => setKyc(userId, status),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-users'] }),
-  })
 
   if (user?.role !== 'ADMIN') {
     return (
@@ -41,10 +38,14 @@ export default function AdminPage() {
 
   return (
     <AppLayout>
-      <h1 className="text-2xl font-bold tracking-tight">Admin · KYC approvals</h1>
-      <p className="mt-1 text-sm text-slate-500">Verify or reject customer identity checks.</p>
+      <h1 className="text-2xl font-bold tracking-tight">Bank administration</h1>
+      <p className="mt-1 text-sm text-slate-500">Add demo customers, record fictional profile details, open INR bank accounts, and manage teller deposits. Do not enter real identity documents.</p>
+
+      <CreateCustomerForm />
 
       <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-semibold">Customers</h2>
+        <p className="mt-1 text-sm text-slate-500">Demo profile information only; identity verification is not enforced.</p>
         {usersQ.isLoading && <p className="text-slate-500">Loading…</p>}
         {!usersQ.isLoading && users.length === 0 && (
           <p className="text-slate-500">No customers yet.</p>
@@ -55,40 +56,22 @@ export default function AdminPage() {
               <tr className="text-left text-slate-400">
                 <th className="pb-2">Customer</th>
                 <th className="pb-2">Email</th>
-                <th className="pb-2">KYC</th>
-                <th className="pb-2 text-right">Actions</th>
+                <th className="pb-2">Phone</th>
+                <th className="pb-2">City</th>
+                <th className="pb-2">Demo profile</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => {
                 const name = [u.firstName, u.lastName].filter(Boolean).join(' ') || '—'
-                const pending = kycM.isPending && kycM.variables?.userId === u.userId
                 return (
                   <tr key={u.userId} className="border-t border-slate-100">
                     <td className="py-2">{name}</td>
                     <td className="py-2 text-slate-500">{u.email}</td>
-                    <td className="py-2">
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${KYC_STYLES[u.kycStatus]}`}>
-                        {u.kycStatus}
-                      </span>
-                    </td>
-                    <td className="py-2 text-right">
-                      <span className="inline-flex gap-2">
-                        <button
-                          onClick={() => kycM.mutate({ userId: u.userId, status: 'VERIFIED' })}
-                          disabled={pending || u.kycStatus === 'VERIFIED'}
-                          className="rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-40"
-                        >
-                          Verify
-                        </button>
-                        <button
-                          onClick={() => kycM.mutate({ userId: u.userId, status: 'REJECTED' })}
-                          disabled={pending || u.kycStatus === 'REJECTED'}
-                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
-                        >
-                          Reject
-                        </button>
-                      </span>
+                    <td className="py-2">{u.phone || '—'}</td>
+                    <td className="py-2">{[u.city, u.country].filter(Boolean).join(', ') || '—'}</td>
+                    <td className="py-2 text-slate-500">
+                      {[u.dateOfBirth, u.addressLine1].filter(Boolean).join(' · ') || 'Profile only'}
                     </td>
                   </tr>
                 )
@@ -96,12 +79,145 @@ export default function AdminPage() {
             </tbody>
           </table>
         )}
-        {kycM.isError && <p className="mt-3 text-sm text-red-600">Could not update KYC.</p>}
       </section>
 
       <TellerDeposit />
       <AuditLog />
     </AppLayout>
+  )
+}
+
+type CustomerFormState = Required<Omit<CreateCustomerPayload, 'openingDeposit'>> & { openingDeposit: string }
+
+function CreateCustomerForm() {
+  const qc = useQueryClient()
+  const [form, setForm] = useState<CustomerFormState>({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    dateOfBirth: '',
+    phone: '',
+    addressLine1: '',
+    city: '',
+    country: 'India',
+    bankName: 'SBI',
+    accountType: 'SAVINGS',
+    openingDeposit: '25000',
+  })
+  const [message, setMessage] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+
+  const createM = useMutation({
+    mutationFn: () => createCustomer({
+      ...form,
+      openingDeposit: Number(form.openingDeposit || 0),
+      dateOfBirth: form.dateOfBirth || undefined,
+      phone: form.phone || undefined,
+      addressLine1: form.addressLine1 || undefined,
+      city: form.city || undefined,
+      country: form.country || undefined,
+    }),
+    onSuccess: (customer) => {
+      qc.invalidateQueries({ queryKey: ['admin-users'] })
+      qc.invalidateQueries({ queryKey: ['admin-accounts'] })
+      setMessage({ kind: 'ok', text: `Created ${customer.firstName} ${customer.lastName} and their ${BANK_LABELS[form.bankName]} account.` })
+      setForm((current) => ({
+        ...current,
+        firstName: '',
+        lastName: '',
+        email: '',
+        password: '',
+        dateOfBirth: '',
+        phone: '',
+        addressLine1: '',
+        city: '',
+      }))
+    },
+    onError: (error) => setMessage({ kind: 'err', text: apiErrorMessage(error) }),
+  })
+
+  function update<K extends keyof CustomerFormState>(key: K, value: CustomerFormState[K]) {
+    setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setMessage(null)
+    createM.mutate()
+  }
+
+  return (
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+      <h2 className="text-lg font-semibold">Add a customer</h2>
+      <p className="mt-1 text-sm text-slate-500">Create a login, record fictional profile details, and open an INR account with an optional opening deposit.</p>
+      <form onSubmit={submit} className="mt-4 grid gap-3 sm:grid-cols-2">
+        <CustomerInput label="First name" required value={form.firstName} onChange={(value) => update('firstName', value)} />
+        <CustomerInput label="Last name" required value={form.lastName} onChange={(value) => update('lastName', value)} />
+        <CustomerInput label="Email" type="email" required value={form.email} onChange={(value) => update('email', value)} />
+        <CustomerInput label="Temporary password (8+ characters)" type="password" minLength={8} required value={form.password} onChange={(value) => update('password', value)} />
+        <CustomerInput label="Date of birth" type="date" value={form.dateOfBirth} onChange={(value) => update('dateOfBirth', value)} />
+        <CustomerInput label="Phone" value={form.phone} onChange={(value) => update('phone', value)} />
+        <CustomerInput label="Address" value={form.addressLine1} onChange={(value) => update('addressLine1', value)} />
+        <CustomerInput label="City" value={form.city} onChange={(value) => update('city', value)} />
+        <CustomerInput label="Country" value={form.country} onChange={(value) => update('country', value)} />
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-slate-700">Bank</span>
+          <select value={form.bankName} onChange={(event) => update('bankName', event.target.value as DemoBank)} className="w-full rounded-lg border border-slate-300 px-3 py-2">
+            {Object.entries(BANK_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-slate-700">Account type</span>
+          <select value={form.accountType} onChange={(event) => update('accountType', event.target.value as AccountType)} className="w-full rounded-lg border border-slate-300 px-3 py-2">
+            <option value="SAVINGS">Savings</option>
+            <option value="CHECKING">Checking</option>
+          </select>
+        </label>
+        <CustomerInput label="Opening deposit (INR)" type="number" min="0" step="0.01" value={form.openingDeposit} onChange={(value) => update('openingDeposit', value)} />
+        <div className="flex items-end">
+          <button type="submit" disabled={createM.isPending} className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-60">
+            {createM.isPending ? 'Creating…' : 'Create customer and account'}
+          </button>
+        </div>
+      </form>
+      {message && <p className={`mt-3 text-sm ${message.kind === 'ok' ? 'text-green-700' : 'text-red-600'}`}>{message.text}</p>}
+    </section>
+  )
+}
+
+function CustomerInput({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  required = false,
+  min,
+  minLength,
+  step,
+}: {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  type?: string
+  required?: boolean
+  min?: string
+  minLength?: number
+  step?: string
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        required={required}
+        min={min}
+        minLength={minLength}
+        step={step}
+        className="w-full rounded-lg border border-slate-300 px-3 py-2"
+      />
+    </label>
   )
 }
 
@@ -132,7 +248,7 @@ function TellerDeposit() {
         {accounts.map((a) => (
           <div key={a.accountNumber} className="flex items-center justify-between rounded-lg border border-slate-200 p-3 text-sm">
             <span>
-              <span className="font-mono">{a.accountNumber}</span> · {a.type} ·{' '}
+              <span className="font-mono">{a.accountNumber}</span> · {a.bankName} {a.type} ·{' '}
               <span className="text-slate-500">{a.ownerEmail}</span> · {formatMoney(a.balance, a.currency)}
             </span>
             <span className="flex items-center gap-2">

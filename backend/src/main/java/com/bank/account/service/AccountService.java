@@ -3,13 +3,12 @@ package com.bank.account.service;
 import com.bank.account.domain.Account;
 import com.bank.account.domain.AccountStatus;
 import com.bank.account.domain.AccountType;
+import com.bank.account.domain.BankName;
 import com.bank.account.repo.AccountRepository;
 import com.bank.common.event.DomainEvent;
 import com.bank.common.event.EventActions;
 import com.bank.common.event.EventPublisher;
 import com.bank.common.exception.NotFoundException;
-import com.bank.customer.domain.KycStatus;
-import com.bank.customer.repo.CustomerProfileRepository;
 import com.bank.ledger.domain.LedgerEntry;
 import com.bank.ledger.domain.TransactionType;
 import com.bank.ledger.repo.LedgerEntryRepository;
@@ -26,42 +25,33 @@ import java.util.concurrent.ThreadLocalRandom;
 @Service
 public class AccountService {
 
-    private static final String DEFAULT_CURRENCY = "USD";
+    private static final String DEFAULT_CURRENCY = "INR";
+    private static final List<String> SUPPORTED_CURRENCIES = List.of("INR", "USD");
 
     private final AccountRepository accountRepository;
     private final LedgerEntryRepository ledgerEntryRepository;
     private final LedgerService ledgerService;
     private final EventPublisher eventPublisher;
-    private final CustomerProfileRepository profileRepository;
-
     public AccountService(AccountRepository accountRepository,
                           LedgerEntryRepository ledgerEntryRepository,
                           LedgerService ledgerService,
-                          EventPublisher eventPublisher,
-                          CustomerProfileRepository profileRepository) {
+                          EventPublisher eventPublisher) {
         this.accountRepository = accountRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.ledgerService = ledgerService;
         this.eventPublisher = eventPublisher;
-        this.profileRepository = profileRepository;
     }
 
     @Transactional
-    public Account createAccount(UUID userId, AccountType type, String currency) {
+    public Account createAccount(UUID userId, AccountType type, String currency, BankName bankName) {
         if (type == AccountType.SYSTEM) {
             throw new IllegalArgumentException("Cannot open a SYSTEM account");
         }
-        KycStatus kyc = profileRepository.findByUserId(userId)
-                .map(p -> p.getKycStatus())
-                .orElse(KycStatus.PENDING);
-        if (kyc != KycStatus.VERIFIED) {
-            throw new IllegalArgumentException("Verify your KYC before opening an account");
-        }
         String ccy = currency == null ? DEFAULT_CURRENCY : currency.toUpperCase();
-        if (!DEFAULT_CURRENCY.equals(ccy)) {
-            throw new IllegalArgumentException("Only USD accounts are supported");
+        if (!SUPPORTED_CURRENCIES.contains(ccy)) {
+            throw new IllegalArgumentException("Only INR and USD accounts are supported");
         }
-        Account account = new Account(generateAccountNumber(), userId, type, ccy);
+        Account account = new Account(generateAccountNumber(), userId, type, ccy, bankName.name());
         return accountRepository.save(account);
     }
 

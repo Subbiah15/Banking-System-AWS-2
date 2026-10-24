@@ -2,11 +2,13 @@ import { api } from './api'
 
 export type AccountType = 'CHECKING' | 'SAVINGS'
 export type AccountStatus = 'ACTIVE' | 'FROZEN' | 'CLOSED'
+export type DemoBank = 'SBI' | 'IOB' | 'HDFC' | 'ICICI' | 'AXIS'
 
 export interface Account {
   id: string
   accountNumber: string
   type: AccountType | 'SYSTEM'
+  bankName: string
   currency: string
   balance: string
   status: AccountStatus
@@ -35,8 +37,8 @@ export async function getAccount(id: string): Promise<Account> {
   return data
 }
 
-export async function createAccount(type: AccountType): Promise<Account> {
-  const { data } = await api.post<Account>('/api/v1/accounts', { type })
+export async function createAccount(type: AccountType, bankName: DemoBank): Promise<Account> {
+  const { data } = await api.post<Account>('/api/v1/accounts', { type, bankName, currency: 'INR' })
   return data
 }
 

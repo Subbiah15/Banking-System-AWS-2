@@ -7,6 +7,8 @@ export interface Loan {
   id: string
   accountId: string
   principal: string
+  totalInterest: string
+  currency: string
   annualRate: string
   termMonths: number
   status: LoanStatus
@@ -39,8 +41,18 @@ export async function getLoan(id: string): Promise<LoanDetail> {
   return data
 }
 
-export async function applyForLoan(accountId: string, principal: number, termMonths: number): Promise<Loan> {
-  const { data } = await api.post<Loan>('/api/v1/loans', { accountId, principal, termMonths })
+export async function applyForLoan(
+  accountId: string,
+  principal: number,
+  annualRatePercent: number,
+  termMonths: number,
+): Promise<Loan> {
+  const { data } = await api.post<Loan>('/api/v1/loans', {
+    accountId,
+    principal,
+    annualRatePercent,
+    termMonths,
+  })
   return data
 }
 

@@ -1,8 +1,7 @@
 package com.bank.customer.domain;
 
 /**
- * Know-Your-Customer verification state. New profiles start PENDING and are
- * moved to VERIFIED/REJECTED by an admin.
+ * Optional demo identity-status metadata. It does not gate banking actions.
  */
 public enum KycStatus {
     PENDING,

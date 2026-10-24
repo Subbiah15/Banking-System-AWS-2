@@ -15,6 +15,8 @@ public record LoanResponse(
         UUID id,
         UUID accountId,
         BigDecimal principal,
+        BigDecimal totalInterest,
+        String currency,
         BigDecimal annualRate,
         int termMonths,
         LoanStatus status,
@@ -22,7 +24,8 @@ public record LoanResponse(
         LocalDate nextDueDate,
         Instant createdAt
 ) {
-    public static LoanResponse from(Loan loan, List<LoanInstallment> installments) {
+    public static LoanResponse from(Loan loan, List<LoanInstallment> installments,
+                                    BigDecimal totalInterest, String currency) {
         BigDecimal outstanding = installments.stream()
                 .filter(i -> i.getStatus() != InstallmentStatus.PAID)
                 .map(LoanInstallment::getTotalDue)
@@ -33,6 +36,7 @@ public record LoanResponse(
                 .min(LocalDate::compareTo)
                 .orElse(null);
         return new LoanResponse(loan.getId(), loan.getAccountId(), loan.getPrincipal(),
+                totalInterest, currency,
                 loan.getAnnualRate(), loan.getTermMonths(), loan.getStatus(),
                 outstanding, nextDue, loan.getCreatedAt());
     }

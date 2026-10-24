@@ -51,13 +51,18 @@ export default function CardsPage() {
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">Account</span>
             <select
-              value={accountId}
+              value={accountId || ownAccounts[0]?.id || ''}
               onChange={(e) => setAccountId(e.target.value)}
               className="rounded-lg border border-slate-300 px-3 py-2"
             >
+              {ownAccounts.length === 0 && (
+                <option value="" disabled>
+                  {accountsQ.isLoading ? 'Loading accounts…' : 'No accounts for this login'}
+                </option>
+              )}
               {ownAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.type} · {a.accountNumber}
+                  {a.bankName} {a.type} · {a.accountNumber}
                 </option>
               ))}
             </select>
@@ -82,6 +87,15 @@ export default function CardsPage() {
           </button>
         </div>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {accountsQ.isError && (
+          <p className="mt-3 text-sm text-red-600">Could not load your accounts. Refresh the page and try again.</p>
+        )}
+        {!accountsQ.isLoading && !accountsQ.isError && ownAccounts.length === 0 && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            This login has no bank account. Sign in as <strong>demo.sbi@bank.local</strong> with password{' '}
+            <strong>Demo123!</strong> to issue a virtual card.
+          </p>
+        )}
 
         {revealed && (
           <div className="mt-4 rounded-xl border border-green-300 bg-green-50 p-4">

@@ -62,7 +62,7 @@ export default function AccountDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-slate-400">
-                  {account.type} · <span className="font-mono">{account.accountNumber}</span>
+                  {account.bankName} · {account.type} · <span className="font-mono">{account.accountNumber}</span>
                 </div>
                 <div className="mt-1 text-3xl font-bold">{formatMoney(account.balance, account.currency)}</div>
               </div>

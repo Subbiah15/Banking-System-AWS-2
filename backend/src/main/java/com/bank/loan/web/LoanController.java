@@ -2,6 +2,7 @@ package com.bank.loan.web;
 
 import com.bank.common.SecurityUtils;
 import com.bank.loan.domain.Loan;
+import com.bank.loan.domain.LoanInstallment;
 import com.bank.loan.dto.InstallmentResponse;
 import com.bank.loan.dto.LoanApplicationRequest;
 import com.bank.loan.dto.LoanDetailResponse;
@@ -36,11 +37,11 @@ public class LoanController {
     }
 
     @PostMapping
-    @Operation(summary = "Apply for a loan (requires verified KYC)")
+    @Operation(summary = "Apply for a demo loan")
     public ResponseEntity<LoanResponse> apply(@Valid @RequestBody LoanApplicationRequest request) {
         Loan loan = loanService.apply(SecurityUtils.currentUserId(),
-                request.accountId(), request.principal(), request.termMonths());
-        return ResponseEntity.status(HttpStatus.CREATED).body(LoanResponse.from(loan, List.of()));
+                request.accountId(), request.principal(), request.annualRatePercent(), request.termMonths());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response(loan, List.of()));
     }
 
     @GetMapping
@@ -48,7 +49,7 @@ public class LoanController {
     public List<LoanResponse> list() {
         UUID userId = SecurityUtils.currentUserId();
         return loanService.list(userId).stream()
-                .map(loan -> LoanResponse.from(loan, loanService.installments(loan.getId())))
+                .map(loan -> response(loan, loanService.installments(loan.getId())))
                 .toList();
     }
 
@@ -69,7 +70,12 @@ public class LoanController {
     private LoanDetailResponse detail(Loan loan) {
         var installments = loanService.installments(loan.getId());
         return new LoanDetailResponse(
-                LoanResponse.from(loan, installments),
+                response(loan, installments),
                 installments.stream().map(InstallmentResponse::from).toList());
+    }
+
+    private LoanResponse response(Loan loan, List<LoanInstallment> installments) {
+        return LoanResponse.from(loan, installments,
+                loanService.totalInterest(loan, installments), loanService.currency(loan));
     }
 }

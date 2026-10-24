@@ -37,11 +37,11 @@ On refresh, the service revokes the presented token and issues a new pair. That 
 Authentication answers: who are you?
 Authorization answers: are you allowed to do this?
 
-## Customer Profile and KYC
+## Customer Profiles
 
-Registration creates both a `User` and a `CustomerProfile`. KYC status starts pending. Admins can set KYC to verified or rejected. Loan applications require verified KYC.
+Registration creates both a `User` and a `CustomerProfile`. An admin can also create a customer, record fictional profile details, open a demo bank account, and add an opening ledger deposit. Profile/KYC status is informational only in this demo; it does not block accounts, transfers, or loan applications. Never enter real identity-document numbers.
 
-This models a real banking rule: lending and regulated account behavior often require identity verification.
+The SBI, IOB, HDFC, ICICI, and Axis labels are simulation data and are not connected to the real banks.
 
 ## Password Handling
 

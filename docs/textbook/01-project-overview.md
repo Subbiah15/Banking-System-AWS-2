@@ -2,13 +2,13 @@
 
 ## What Problem This Project Solves
 
-This project is a simulated full-stack banking platform. It lets a customer register, sign in, complete a profile, open accounts, deposit and withdraw money, transfer money to another account, save beneficiaries, issue virtual cards, make card purchases, top up an account through a payment gateway, apply for loans, repay installments, and let an admin verify KYC or approve/reject loans.
+This project is a simulated full-stack banking platform. It lets an admin create customers with fictional profile details and INR demo accounts labelled SBI, IOB, HDFC, ICICI, or Axis. Customers can sign in, deposit and withdraw demo money, transfer to other demo accounts, save beneficiaries, issue virtual cards, top up an account through a simulated payment gateway, apply for loans, and repay installments. Identity verification is not enforced.
 
 The word "simulated" matters. The application behaves like a bank from a software-engineering perspective, but it does not move real money and it is not a regulated financial institution. That makes it ideal for learning: the project can teach banking correctness, security, transactions, and architecture without legal or financial risk.
 
 ## Real-World Use Case
 
-Imagine a small digital bank prototype. A customer signs up, proves identity through a KYC workflow, opens a checking account, adds money, sends money to another customer, uses a virtual card for purchases, and borrows through an installment loan. An administrator reviews customers and loan requests.
+Imagine a small digital bank prototype. An administrator adds a fictional customer profile and demo bank account; customers send demo money between accounts and explore cards and loans. An administrator manages accounts, deposits, and loan requests.
 
 The project is also useful as a resume-grade engineering sample because it demonstrates several high-value ideas:
 

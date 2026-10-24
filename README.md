@@ -15,7 +15,7 @@ See [`PROJECT_PLAN.md`](./PROJECT_PLAN.md) for the full architecture and phased 
 
 - **Phase 0 — Scaffold & infra ✅**
 - **Phase 1 — Auth & users ✅** — registration, login, JWT access + rotating
-  refresh tokens (Redis), RBAC, KYC profiles, admin verification, signup/login/profile UI.
+  refresh tokens (Redis), RBAC, demo customer profiles and admin-managed customer creation.
 - **Phase 2 — Accounts & ledger ✅** — open accounts, deposits/withdrawals on a
   **double-entry ledger** (balanced debit/credit entries, `BigDecimal`, pessimistic
   locking, running balance), dashboard + account detail UI with transaction history.
@@ -24,13 +24,13 @@ See [`PROJECT_PLAN.md`](./PROJECT_PLAN.md) for the full architecture and phased 
 - **Phase 4 — Cards & payments ✅** — tokenized **virtual cards** (one-time PAN, freeze/cancel,
   monthly spend limits), card purchases that debit the account, and **account top-ups** through a
   **Stripe**-or-simulated payment gateway (idempotent fulfilment).
-- **Phase 5 — Loans & interest ✅** — loan applications (KYC-gated), admin approval that
+- **Phase 5 — Loans & interest ✅** — demo loan applications, admin approval that
   generates an **amortization schedule** and disburses the principal, installment **repayments**,
   and a **scheduled job** that flags overdue installments. All disbursements/repayments flow
   through the ledger. Loans UI + (admin) approvals panel.
 - **Phase 6 — Notifications & audit ✅** (current) — **event-driven** via **Kafka**: services
   publish domain events that independent consumers turn into in-app **notifications** (+ email)
-  and an append-only **audit log**. Notifications bell + page; admin audit viewer + KYC panel.
+  and an append-only **audit log**. Notifications bell + page; admin audit viewer.
 
 Remaining roadmap: observability and deployment.
 
@@ -51,14 +51,18 @@ Domain events flow over Kafka topic `banking.events`; two consumer groups
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/api/v1/loans` | bearer | Apply for a loan (requires verified KYC) |
+| POST | `/api/v1/loans` | bearer | Apply for a demo loan |
 | GET | `/api/v1/loans` `/{id}` | bearer | List / view loan + amortization schedule |
 | POST | `/api/v1/loans/{id}/repay` | bearer | Pay the next installment |
 | GET | `/api/v1/admin/loans` | ADMIN | List loans (optional `?status=PENDING`) |
 | POST | `/api/v1/admin/loans/{id}/approve` `/reject` | ADMIN | Approve (disburse + schedule) / reject |
 
-Equal monthly payments via the standard amortization formula (`BigDecimal`, configurable
-`app.loans.annual-rate`, default 12%). A daily `@Scheduled` job marks overdue installments.
+Applicants enter an annual interest rate from 0% to 100% when applying; if omitted by older API
+clients, the backend uses `app.loans.annual-rate` (default 12%). Equal monthly payments use the
+standard amortization formula (`BigDecimal`). A daily `@Scheduled` job marks overdue installments.
+Loan summaries show the projected/full-term interest cost and account currency; expanded
+amortization schedules show each installment's principal, interest, and total payment.
+The application request accepts `annualRatePercent` (for example, `8.5` means 8.5% per year).
 
 ### Cards & Payments API (Phase 4)
 
@@ -100,7 +104,7 @@ underlying ledger transaction at most once per key.
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
-| POST | `/api/v1/accounts` | bearer | Open an account (CHECKING/SAVINGS) |
+| POST | `/api/v1/accounts` | bearer | Open a demo account (CHECKING/SAVINGS, INR by default) |
 | GET | `/api/v1/accounts` | bearer | List my accounts |
 | GET | `/api/v1/accounts/{id}` | bearer | Get one account |
 | POST | `/api/v1/accounts/{id}/deposit` | bearer | Deposit (amount) |
@@ -121,42 +125,68 @@ zero) against the customer account and a system settlement account, in one DB tr
 | GET | `/api/v1/users/me` | bearer | Current user + KYC profile |
 | PUT | `/api/v1/users/me/profile` | bearer | Update KYC profile |
 | GET | `/api/v1/admin/users` | ADMIN | List all customer profiles |
-| POST | `/api/v1/admin/users/{id}/kyc` | ADMIN | Set KYC status |
+| POST | `/api/v1/admin/users` | ADMIN | Create customer profile + INR bank account + optional opening deposit |
+| POST | `/api/v1/admin/users/{id}/kyc` | ADMIN | Update optional demo profile status (not a banking-action gate) |
 
 **Demo admin** (seeded at startup): `admin@bank.local` / `Admin123!`
-(override via `ADMIN_EMAIL` / `ADMIN_PASSWORD`).
+(override via `ADMIN_EMAIL` / `ADMIN_PASSWORD`). Five fictional bank customers with funded INR
+accounts are seeded when `SEED_DEMO=true`; they all use `Demo123!`:
+`demo.sbi@bank.local`, `demo.iob@bank.local`, `demo.hdfc@bank.local`,
+`demo.icici@bank.local`, and `demo.axis@bank.local`.
+Their sample opening balances are SBI ₹25,000, IOB ₹18,450, HDFC ₹61,200, ICICI ₹38,750,
+and Axis ₹94,300.
+These are simulations only; they do not connect to SBI, IOB, HDFC, ICICI, or Axis.
 
 ## Prerequisites
 
 - Java 21, Maven (the `./mvnw` wrapper is included), Node 20+, Docker.
 
-## Run locally
+## Run locally (PowerShell)
 
-```bash
-# 1. (optional) create your env file
-cp .env.example .env
+The project requires PostgreSQL, Redis, Java 21+, and Node 20+. If using the existing local
+PostgreSQL/Redis services, ensure the `banking` database/user exist and Redis listens on `6379`.
 
-# 2. start Postgres + Redis + Kafka  (Postgres host port 5433 -> container 5432)
-docker compose up -d postgres redis kafka
+Start the backend in PowerShell terminal 1:
 
-# 3. run the backend
-cd backend && ./mvnw spring-boot:run
-#   http://localhost:8080/actuator/health   -> {"status":"UP"}
-#   http://localhost:8080/swagger-ui.html   -> API docs
-
-# 4. run the frontend (in another terminal)
-cd frontend && npm install && npm run dev
-#   http://localhost:5173  -> shows "Backend: UP"
+```powershell
+cd backend
+$env:DB_URL = "jdbc:postgresql://localhost:5432/banking"
+$env:DB_USERNAME = "banking"
+$env:DB_PASSWORD = "banking"
+$env:REDIS_HOST = "localhost"
+$env:REDIS_PORT = "6379"
+$env:EVENTS_ENABLED = "false"
+$env:SEED_DEMO = "true"
+$env:CORS_ALLOWED_ORIGINS = "http://localhost:5174"
+.\mvnw.cmd spring-boot:run
 ```
 
-> **Port note:** the Docker Postgres is published on host port **5433** to avoid
-> clashing with a local Postgres on 5432. Inside Docker it remains 5432.
+Start the frontend in PowerShell terminal 2:
+
+```powershell
+cd frontend
+npm ci
+npm run dev -- --host 127.0.0.1 --port 5174
+```
+
+Open <http://localhost:5174/login>. The seeded admin is `admin@bank.local` / `Admin123!`.
+Five sample customer accounts use the shared password `Demo123!`; their emails are listed above.
+Sign in as a customer to see a funded INR account and try transfers between the sample accounts.
+Use only fictional profile details. SBI, IOB, HDFC, ICICI, and Axis are demo labels and do not
+connect to those banks.
+
+Check backend health at <http://localhost:8080/actuator/health>. Stop each app with Ctrl+C in its
+terminal. To use Docker Compose for local services instead, PostgreSQL is published on host port
+5433, while it remains port 5432 inside Docker.
 
 ### Run the whole stack in Docker
 
 ```bash
 docker compose --profile full up --build
 ```
+
+For seeded sample data with the full local Docker stack, copy `.env.example` to `.env` first; the
+Compose backend enables demo seeding by default.
 
 ### Observability (local)
 
@@ -165,30 +195,28 @@ docker compose --profile monitoring up -d   # Prometheus :9090 + Grafana :3000 (
 # backend exposes metrics at /actuator/prometheus; Grafana auto-loads the "Banking System" dashboard
 ```
 
-## Deployment
+## AWS deployment
 
-Backend + Postgres + Redis → **Render** (via the `render.yaml` Blueprint); frontend → **Vercel**.
+AWS is the only supported deployment target. Alternative hosting-provider configurations have
+been removed. Docker Compose remains for local development only.
 
-1. **Backend (Render):** New → **Blueprint** → connect this repo. Render reads `render.yaml` and
-   provisions the **web service** (Docker, root dir `backend`), **Postgres**, and **Redis** with all
-   env wired automatically (`JWT_SECRET` auto-generated, `SEED_DEMO=true`). After the first deploy,
-   set `CORS_ALLOWED_ORIGINS` to your Vercel URL.
-2. **Frontend (Vercel):** import `frontend/`, set `VITE_API_BASE_URL=https://<backend>.onrender.com`,
-   deploy (`vercel.json` handles SPA routing).
-3. Point the backend's `CORS_ALLOWED_ORIGINS` at the Vercel domain; open the site and sign in.
+Recommended production layout:
 
-> Render's free Postgres expires after ~30 days and the free web service cold-starts after
-> inactivity. **Kafka isn't offered on Render**, so this deploy sets `EVENTS_ENABLED=false` (the
-> publisher no-ops; notifications/audit are demoed locally). Real email: `SPRING_MAIL_HOST/...`.
-> Real Stripe: `STRIPE_SECRET_KEY`/`STRIPE_WEBHOOK_SECRET`.
+- **Frontend:** private S3 bucket served through CloudFront; configure SPA fallback to `/index.html`.
+- **Backend:** Docker image in Amazon ECR, deployed as an ECS Fargate service behind an Application
+  Load Balancer. The ALB health check path is `/actuator/health`.
+- **Database:** Amazon RDS for PostgreSQL. Keep it private and allow connections only from the
+  backend security group.
+- **Refresh-token store:** Amazon ElastiCache for Redis, reachable only from the backend.
+- **Secrets and logs:** AWS Secrets Manager for credentials and JWT/third-party keys; CloudWatch
+  Logs for application logs.
+- **Optional integrations:** Amazon MSK if Kafka events are required; otherwise set
+  `EVENTS_ENABLED=false`. Configure SES only if real email delivery is needed.
 
-> **Live demo:** https://frontend-eosin-delta-qo07y0sr3z.vercel.app
-> · **API:** https://MrCJ123-banking-system.hf.space (`/swagger-ui.html`, `/actuator/health`)
-> · **Demo login:** `demo@bank.local` / `Demo123!` · **Admin:** `admin@bank.local` / `Admin123!`
->
-> Hosting: frontend on **Vercel**, backend on **Hugging Face Spaces** (Docker), Postgres on
-> **Neon**, Redis on **Upstash** — all free tiers. Kafka isn't hosted, so notifications/audit
-> are demoed locally; everything else runs live.
+See [`deploy/aws/README.md`](./deploy/aws/README.md) for the AWS deployment checklist and required
+environment variables. The repository does not yet contain AWS infrastructure-as-code or an
+automated AWS deployment workflow; provision the AWS resources and configure secrets before
+deploying. Do not use the local `.env` file as an AWS secrets store.
 
 ## Test
 

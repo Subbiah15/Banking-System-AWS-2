@@ -29,11 +29,19 @@ class LoanIntegrationTest extends AbstractIntegrationTest {
     }
 
     private JsonNode apply(String token, String accountId, String principal, int term) throws Exception {
+        return apply(token, accountId, principal, null, term);
+    }
+
+    private JsonNode apply(String token, String accountId, String principal,
+                           String annualRatePercent, int term) throws Exception {
+        String rateField = annualRatePercent == null
+                ? ""
+                : ",\"annualRatePercent\":" + annualRatePercent;
         String json = mvc.perform(post("/api/v1/loans")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"accountId\":\"" + accountId + "\",\"principal\":" + principal
-                                + ",\"termMonths\":" + term + "}"))
+                                + rateField + ",\"termMonths\":" + term + "}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return mapper.readTree(json);
@@ -47,9 +55,8 @@ class LoanIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void applyRequiresVerifiedKyc() throws Exception {
-        // Account opening already needs KYC; revoke it afterwards to exercise the loan gate.
-        String token = registerVerified("loan-nokyc@example.com");
+    void loanApplicationDoesNotRequireKycApproval() throws Exception {
+        String token = register("loan-nokyc@example.com");
         String acct = openAccount(token).get("id").asText();
         setKyc(meId(token), "REJECTED");
 
@@ -57,7 +64,8 @@ class LoanIntegrationTest extends AbstractIntegrationTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"accountId\":\"" + acct + "\",\"principal\":300,\"termMonths\":3}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("PENDING"));
     }
 
     @Test
@@ -68,17 +76,29 @@ class LoanIntegrationTest extends AbstractIntegrationTest {
         String acct = account.get("id").asText();
         tellerDeposit(account.get("accountNumber").asText(), "100.00"); // buffer to cover interest
 
-        String loanId = apply(token, acct, "300.00", 3).get("id").asText();
+        JsonNode application = apply(token, acct, "300.00", "8.5", 3);
+        String loanId = application.get("id").asText();
+        assertThat(application.get("currency").asText()).isEqualTo("INR");
+        assertThat(application.get("annualRate").decimalValue()).isEqualByComparingTo("0.085");
+        assertThat(application.get("totalInterest").decimalValue()).isPositive();
 
         mvc.perform(post("/api/v1/admin/loans/" + loanId + "/approve")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isForbidden());
 
-        mvc.perform(post("/api/v1/admin/loans/" + loanId + "/approve")
+        String approvalJson = mvc.perform(post("/api/v1/admin/loans/" + loanId + "/approve")
                         .header("Authorization", "Bearer " + admin))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.loan.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.schedule.length()").value(3));
+                .andExpect(jsonPath("$.schedule.length()").value(3))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode approval = mapper.readTree(approvalJson);
+        BigDecimal scheduledInterest = BigDecimal.ZERO;
+        for (JsonNode installment : approval.get("schedule")) {
+            scheduledInterest = scheduledInterest.add(installment.get("interestDue").decimalValue());
+        }
+        assertThat(approval.get("loan").get("totalInterest").decimalValue())
+                .isEqualByComparingTo(scheduledInterest);
         assertThat(balance(token, acct)).isEqualTo(400.00); // 100 buffer + 300 principal
 
         String last = "";

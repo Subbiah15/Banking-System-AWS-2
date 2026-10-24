@@ -27,6 +27,7 @@ export default function TransferPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
+  const sourceAccount = ownAccounts.find((account) => account.id === sourceAccountId) ?? ownAccounts[0]
   const destinationAccountNumber = destMode === 'beneficiary' ? beneficiaryNumber : manualNumber
 
   const transferM = useMutation({
@@ -40,7 +41,7 @@ export default function TransferPage() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['accounts'] })
       setSuccess(
-        `Sent ${formatMoney(res.amount)} to ${res.destinationAccountNumber} · ref ${res.reference}`,
+        `Sent ${formatMoney(res.amount, sourceAccount?.currency ?? 'INR')} to ${res.destinationAccountNumber} · ref ${res.reference}`,
       )
       setError(null)
       setAmount('')
@@ -63,13 +64,18 @@ export default function TransferPage() {
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">From account</span>
             <select
-              value={sourceAccountId}
+              value={sourceAccountId || ownAccounts[0]?.id || ''}
               onChange={(e) => setSourceAccountId(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2"
             >
+              {ownAccounts.length === 0 && (
+                <option value="" disabled>
+                  {accountsQ.isLoading ? 'Loading accounts…' : 'No accounts for this login'}
+                </option>
+              )}
               {ownAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.type} · {a.accountNumber} · {formatMoney(a.balance, a.currency)}
+                  {a.bankName} {a.type} · {a.accountNumber} · {formatMoney(a.balance, a.currency)}
                 </option>
               ))}
             </select>
@@ -108,7 +114,11 @@ export default function TransferPage() {
                 onChange={(e) => setBeneficiaryNumber(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
               >
-                <option value="">Select a beneficiary…</option>
+                <option value="">
+                  {(beneficiariesQ.data ?? []).length === 0
+                    ? 'No saved payees yet — add one below'
+                    : 'Select a beneficiary…'}
+                </option>
                 {(beneficiariesQ.data ?? []).map((b) => (
                   <option key={b.id} value={b.accountNumber}>
                     {b.nickname} · {b.accountNumber}
@@ -144,7 +154,7 @@ export default function TransferPage() {
           <div className="flex items-center gap-4">
             <button
               onClick={() => transferM.mutate()}
-              disabled={!validTransfer || transferM.isPending}
+              disabled={!validTransfer || ownAccounts.length === 0 || transferM.isPending}
               className="rounded-lg bg-slate-900 px-5 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
             >
               {transferM.isPending ? 'Sending…' : 'Send transfer'}
@@ -152,6 +162,16 @@ export default function TransferPage() {
             {success && <span className="text-sm text-green-600">{success}</span>}
             {error && <span className="text-sm text-red-600">{error}</span>}
           </div>
+          {accountsQ.isError && (
+            <p className="text-sm text-red-600">Could not load your accounts. Refresh the page and try again.</p>
+          )}
+          {!accountsQ.isLoading && !accountsQ.isError && ownAccounts.length === 0 && (
+            <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              This login has no accounts to send from. Sign in as <strong>demo.sbi@bank.local</strong> with
+              password <strong>Demo123!</strong> to try a transfer. To test a recipient, enter or save
+              another demo customer’s account number from the Admin accounts list.
+            </p>
+          )}
         </div>
       </section>
 

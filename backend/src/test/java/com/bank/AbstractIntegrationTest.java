@@ -58,7 +58,7 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected ObjectMapper mapper;
 
-    /** Registers a customer (KYC still PENDING) and returns the access token. */
+    /** Registers a customer and returns the access token. */
     protected String register(String email) throws Exception {
         String body = """
                 {"email":"%s","password":"Secret123","firstName":"Test","lastName":"User"}
@@ -70,7 +70,7 @@ public abstract class AbstractIntegrationTest {
         return mapper.readTree(json).get("accessToken").asText();
     }
 
-    /** Registers a customer and verifies their KYC (so they can open accounts). */
+    /** Registers a customer and marks the optional demo KYC metadata verified. */
     protected String registerVerified(String email) throws Exception {
         String token = register(email);
         verifyKyc(meId(token));
@@ -99,10 +99,11 @@ public abstract class AbstractIntegrationTest {
                 .andExpect(status().isOk());
     }
 
-    /** Opens a CHECKING account; returns the account JSON (id, accountNumber, balance, ...). */
+    /** Opens a CHECKING INR demo account; returns the account JSON. */
     protected JsonNode openAccount(String token) throws Exception {
         String json = mvc.perform(post("/api/v1/accounts").header("Authorization", "Bearer " + token)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"type\":\"CHECKING\"}"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"CHECKING\",\"bankName\":\"SBI\",\"currency\":\"INR\"}"))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return mapper.readTree(json);

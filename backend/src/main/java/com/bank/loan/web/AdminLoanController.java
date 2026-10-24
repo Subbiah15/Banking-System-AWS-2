@@ -1,6 +1,7 @@
 package com.bank.loan.web;
 
 import com.bank.loan.domain.Loan;
+import com.bank.loan.domain.LoanInstallment;
 import com.bank.loan.domain.LoanStatus;
 import com.bank.loan.dto.InstallmentResponse;
 import com.bank.loan.dto.LoanDetailResponse;
@@ -37,7 +38,7 @@ public class AdminLoanController {
     @Operation(summary = "List loans (optionally filter by status)")
     public List<LoanResponse> list(@RequestParam(required = false) LoanStatus status) {
         return loanService.listByStatus(status).stream()
-                .map(loan -> LoanResponse.from(loan, loanService.installments(loan.getId())))
+                .map(loan -> response(loan, loanService.installments(loan.getId())))
                 .toList();
     }
 
@@ -47,7 +48,7 @@ public class AdminLoanController {
         Loan loan = loanService.approve(loanId);
         var installments = loanService.installments(loan.getId());
         return new LoanDetailResponse(
-                LoanResponse.from(loan, installments),
+                response(loan, installments),
                 installments.stream().map(InstallmentResponse::from).toList());
     }
 
@@ -55,6 +56,11 @@ public class AdminLoanController {
     @Operation(summary = "Reject a pending loan")
     public LoanResponse reject(@PathVariable UUID loanId) {
         Loan loan = loanService.reject(loanId);
-        return LoanResponse.from(loan, List.of());
+        return response(loan, List.of());
+    }
+
+    private LoanResponse response(Loan loan, List<LoanInstallment> installments) {
+        return LoanResponse.from(loan, installments,
+                loanService.totalInterest(loan, installments), loanService.currency(loan));
     }
 }

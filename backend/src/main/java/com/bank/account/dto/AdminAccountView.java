@@ -10,13 +10,14 @@ import java.math.BigDecimal;
 public record AdminAccountView(
         String accountNumber,
         AccountType type,
+        String bankName,
         BigDecimal balance,
         String currency,
         AccountStatus status,
         String ownerEmail
 ) {
     public static AdminAccountView of(Account a, String ownerEmail) {
-        return new AdminAccountView(a.getAccountNumber(), a.getType(), a.getBalance(),
+        return new AdminAccountView(a.getAccountNumber(), a.getType(), a.getBankName(), a.getBalance(),
                 a.getCurrency(), a.getStatus(), ownerEmail);
     }
 }

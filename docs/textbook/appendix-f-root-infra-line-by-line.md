@@ -420,10 +420,10 @@ A **modular monolith** is the right call for a solo, deployable, resume project:
 - **Testing**: JUnit 5, Mockito, **Testcontainers** (real Postgres in tests), Spring Boot Test
 - **Observability**: Spring Actuator, Prometheus, Grafana, Logback JSON logs
 
-### Deployment (live URL for the resume)
-- **Backend + DB + Redis**: Railway or Render (managed Postgres/Redis add-ons) — easiest; or AWS (ECS/RDS/ElastiCache) if you want cloud cred on the resume.
-- **Frontend**: Vercel or Netlify.
-- **Domain + HTTPS**: free subdomain from the host, or a cheap custom domain.
+### Deployment (AWS only)
+- **Backend, database, and cache**: Amazon ECS on Fargate with an Application Load Balancer, Amazon RDS for PostgreSQL, and Amazon ElastiCache for Redis in private subnets.
+- **Frontend**: private Amazon S3 bucket served through CloudFront.
+- **Operations and security**: AWS Secrets Manager, CloudWatch, Route 53, and ACM.
 
 ---
 
@@ -481,7 +481,7 @@ The single most resume-impressive decision: a **double-entry ledger**. Every mov
 - Rate limiting, input validation, security headers, refresh-token revocation.
 - Testcontainers integration tests, ≥70% coverage on core money logic.
 - Prometheus/Grafana dashboards, structured logging.
-- Deploy backend+DB+Redis (Railway/Render), frontend (Vercel), wire HTTPS, seed demo data.
+- Provision the AWS networking and managed services; deploy the backend to ECS/Fargate and frontend to S3/CloudFront; configure HTTPS and verify health.
 - **README**: architecture diagram, live demo link, demo credentials, screenshots, GIFs.
 
 ---
@@ -599,8 +599,9 @@ BankingSystem/
 78. <code>- **Observability**: Spring Actuator, Prometheus, Grafana, Logback JSON logs</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
 79. <em>blank line</em> - Blank separator. It has no runtime behavior; it improves human parsing and keeps related code grouped.
 80. <code>### Deployment (live URL for the resume)</code> - Comment/documentation. The compiler or interpreter ignores it at runtime, but it records intent for maintainers.
-81. <code>- **Backend + DB + Redis**: Railway or Render (managed Postgres/Redis add-ons) — easiest; or AWS (ECS/RDS/ElastiCache) if you want cloud cred on the resume.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
-82. <code>- **Frontend**: Vercel or Netlify.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
+81. <code>- **Backend, database, and cache**: Amazon ECS on Fargate with an Application Load Balancer, Amazon RDS for PostgreSQL, and Amazon ElastiCache for Redis in private subnets.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
+82. <code>- **Frontend**: private Amazon S3 bucket served through CloudFront.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
+83. <code>- **Operations and security**: AWS Secrets Manager, CloudWatch, Route 53, and ACM.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
 83. <code>- **Domain + HTTPS**: free subdomain from the host, or a cheap custom domain.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
 84. <em>blank line</em> - Blank separator. It has no runtime behavior; it improves human parsing and keeps related code grouped.
 85. <code>---</code> - Comment/documentation. The compiler or interpreter ignores it at runtime, but it records intent for maintainers.
@@ -659,7 +660,7 @@ BankingSystem/
 138. <code>- Rate limiting, input validation, security headers, refresh-token revocation.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
 139. <code>- Testcontainers integration tests, ≥70% coverage on core money logic.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
 140. <code>- Prometheus/Grafana dashboards, structured logging.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
-141. <code>- Deploy backend+DB+Redis (Railway/Render), frontend (Vercel), wire HTTPS, seed demo data.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
+141. <code>- Provision the AWS networking and managed services; deploy the backend to ECS/Fargate and frontend to S3/CloudFront; configure HTTPS and verify health.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
 142. <code>- **README**: architecture diagram, live demo link, demo credentials, screenshots, GIFs.</code> - Markdown documentation line. It teaches humans and has no runtime behavior.
 143. <em>blank line</em> - Blank separator. It has no runtime behavior; it improves human parsing and keeps related code grouped.
 144. <code>---</code> - Comment/documentation. The compiler or interpreter ignores it at runtime, but it records intent for maintainers.

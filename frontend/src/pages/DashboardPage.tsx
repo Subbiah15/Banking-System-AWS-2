@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../components/AppLayout'
-import { createAccount, listAccounts, type AccountType } from '../lib/accounts'
+import { createAccount, listAccounts, type AccountType, type DemoBank } from '../lib/accounts'
 import { formatMoney } from '../lib/format'
 import { apiErrorMessage } from '../lib/errors'
 
@@ -10,6 +10,7 @@ export default function DashboardPage() {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [type, setType] = useState<AccountType>('CHECKING')
+  const [bankName, setBankName] = useState<DemoBank>('SBI')
 
   const { data: accounts, isLoading, isError } = useQuery({
     queryKey: ['accounts'],
@@ -17,25 +18,46 @@ export default function DashboardPage() {
   })
 
   const open = useMutation({
-    mutationFn: () => createAccount(type),
+    mutationFn: () => createAccount(type, bankName),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accounts'] }),
   })
 
   const customerAccounts = accounts ?? []
-  const total = customerAccounts.reduce((sum, a) => sum + Number(a.balance), 0)
+  const totals = customerAccounts.reduce<Record<string, number>>((sum, account) => {
+    sum[account.currency] = (sum[account.currency] ?? 0) + Number(account.balance)
+    return sum
+  }, {})
 
   return (
     <AppLayout>
+      <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        Demo banking only: SBI, IOB, HDFC, ICICI and Axis are simulated; no real bank is connected.
+      </p>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Accounts</h1>
           {!isLoading && (
             <p className="mt-1 text-sm text-slate-500">
-              Total balance: <span className="font-semibold text-slate-900">{formatMoney(total)}</span>
+              Total balance:{' '}
+              <span className="font-semibold text-slate-900">
+                {Object.entries(totals).map(([currency, amount]) => formatMoney(amount, currency)).join(' · ') || formatMoney(0, 'INR')}
+              </span>
             </p>
           )}
         </div>
         <div className="flex items-center gap-2">
+          <select
+            aria-label="Bank"
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value as DemoBank)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="SBI">SBI</option>
+            <option value="IOB">Indian Overseas Bank</option>
+            <option value="HDFC">HDFC Bank</option>
+            <option value="ICICI">ICICI Bank</option>
+            <option value="AXIS">Axis Bank</option>
+          </select>
           <button
             onClick={() => navigate('/transfer')}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium hover:bg-slate-50"
@@ -67,10 +89,7 @@ export default function DashboardPage() {
         {isError && <p className="text-red-600">Failed to load accounts.</p>}
         {!isLoading && customerAccounts.length === 0 && (
           <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
-            No accounts yet. Open your first account to get started.
-            <div className="mt-1 text-xs text-slate-400">
-              Your KYC must be verified by an admin before you can open an account.
-            </div>
+            No accounts yet. Open your first demo account to get started.
           </div>
         )}
         {customerAccounts.map((a) => (
@@ -81,7 +100,7 @@ export default function DashboardPage() {
           >
             <div>
               <div className="font-medium">
-                {a.type} · <span className="font-mono text-sm text-slate-500">{a.accountNumber}</span>
+                {a.bankName} · {a.type} · <span className="font-mono text-sm text-slate-500">{a.accountNumber}</span>
               </div>
               <div className="text-xs text-slate-400">{a.status}</div>
             </div>

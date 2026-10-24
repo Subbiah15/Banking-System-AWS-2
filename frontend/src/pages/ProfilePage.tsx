@@ -4,12 +4,6 @@ import { updateProfile, type UpdateProfilePayload } from '../lib/api'
 import { apiErrorMessage } from '../lib/errors'
 import AppLayout from '../components/AppLayout'
 
-const KYC_STYLES: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  VERIFIED: 'bg-green-100 text-green-800',
-  REJECTED: 'bg-red-100 text-red-800',
-}
-
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth()
   const [form, setForm] = useState<UpdateProfilePayload>({
@@ -53,8 +47,8 @@ export default function ProfilePage() {
         <section className="rounded-2xl border border-slate-200 bg-white p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Account</h2>
-            <span className={`rounded-full px-3 py-1 text-xs font-medium ${KYC_STYLES[user.kycStatus]}`}>
-              KYC: {user.kycStatus}
+            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-800">
+              Demo profile
             </span>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-y-2 text-sm">
@@ -67,6 +61,7 @@ export default function ProfilePage() {
 
         <section className="rounded-2xl border border-slate-200 bg-white p-6">
           <h2 className="text-lg font-semibold">Profile</h2>
+          <p className="mt-1 text-sm text-slate-500">Use fictional details only; this demo does not perform real identity verification.</p>
           <form onSubmit={onSave} className="mt-4 grid grid-cols-2 gap-4">
             <Input label="First name" value={form.firstName ?? ''} onChange={set('firstName')} />
             <Input label="Last name" value={form.lastName ?? ''} onChange={set('lastName')} />

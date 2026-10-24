@@ -24,7 +24,7 @@ const STATUS_STYLES: Record<string, string> = {
 }
 
 function pct(rate: string) {
-  return `${(Number(rate) * 100).toFixed(1)}%`
+  return `${(Number(rate) * 100).toLocaleString(undefined, { maximumFractionDigits: 2 })}%`
 }
 
 export default function LoansPage() {
@@ -36,11 +36,18 @@ export default function LoansPage() {
 
   const [accountId, setAccountId] = useState('')
   const [principal, setPrincipal] = useState('')
+  const [annualRatePercent, setAnnualRatePercent] = useState('12')
   const [term, setTerm] = useState('12')
   const [error, setError] = useState<string | null>(null)
 
   const applyM = useMutation({
-    mutationFn: () => applyForLoan(accountId || ownAccounts[0]?.id, Number(principal), Number(term)),
+    mutationFn: () =>
+      applyForLoan(
+        accountId || ownAccounts[0]?.id,
+        Number(principal),
+        Number(annualRatePercent),
+        Number(term),
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['loans'] })
       setPrincipal('')
@@ -55,18 +62,25 @@ export default function LoansPage() {
 
       <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-semibold">Apply for a loan</h2>
-        <p className="mt-1 text-sm text-slate-500">Requires verified KYC. Fixed-rate, equal monthly payments.</p>
+        <p className="mt-1 text-sm text-slate-500">
+          Enter the annual interest rate for this demo loan. Equal monthly payments are calculated from it.
+        </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">Disburse to</span>
             <select
-              value={accountId}
+              value={accountId || ownAccounts[0]?.id || ''}
               onChange={(e) => setAccountId(e.target.value)}
               className="rounded-lg border border-slate-300 px-3 py-2"
             >
+              {ownAccounts.length === 0 && (
+                <option value="" disabled>
+                  {accountsQ.isLoading ? 'Loading accounts…' : 'No accounts for this login'}
+                </option>
+              )}
               {ownAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.type} · {a.accountNumber}
+                  {a.bankName} {a.type} · {a.accountNumber}
                 </option>
               ))}
             </select>
@@ -84,6 +98,18 @@ export default function LoansPage() {
             />
           </label>
           <label className="block">
+            <span className="mb-1 block text-sm font-medium text-slate-700">Annual interest rate (%)</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={annualRatePercent}
+              onChange={(e) => setAnnualRatePercent(e.target.value)}
+              className="w-36 rounded-lg border border-slate-300 px-3 py-2"
+            />
+          </label>
+          <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">Term (months)</span>
             <input
               type="number"
@@ -96,13 +122,29 @@ export default function LoansPage() {
           </label>
           <button
             onClick={() => applyM.mutate()}
-            disabled={applyM.isPending || Number(principal) <= 0 || ownAccounts.length === 0}
+            disabled={
+              applyM.isPending ||
+              Number(principal) <= 0 ||
+              Number(annualRatePercent) < 0 ||
+              Number(annualRatePercent) > 100 ||
+              annualRatePercent === '' ||
+              ownAccounts.length === 0
+            }
             className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
             {applyM.isPending ? 'Submitting…' : 'Apply'}
           </button>
         </div>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        {accountsQ.isError && (
+          <p className="mt-3 text-sm text-red-600">Could not load your accounts. Refresh the page and try again.</p>
+        )}
+        {!accountsQ.isLoading && !accountsQ.isError && ownAccounts.length === 0 && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            This login has no account to receive a demo loan. Sign in as <strong>demo.sbi@bank.local</strong>{' '}
+            with password <strong>Demo123!</strong> to explore loan applications.
+          </p>
+        )}
       </section>
 
       <div className="mt-6 space-y-3">
@@ -138,13 +180,33 @@ function LoanRow({ loan }: { loan: Loan }) {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="font-medium">
-            {formatMoney(loan.principal)} · {loan.termMonths} mo · {pct(loan.annualRate)} APR
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-5">
+            <div>
+              <div className="text-xs text-slate-500">Principal</div>
+              <div className="font-medium">{formatMoney(loan.principal, loan.currency)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Term</div>
+              <div className="font-medium">{loan.termMonths} months</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500" title="Sum of interest across the full repayment schedule">
+                Total interest
+              </div>
+              <div className="font-medium">{formatMoney(loan.totalInterest, loan.currency)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Interest rate</div>
+              <div className="font-medium">{pct(loan.annualRate)} APR</div>
+            </div>
+            <div>
+              <div className="text-xs text-slate-500">Outstanding</div>
+              <div className="font-medium">{formatMoney(loan.outstanding, loan.currency)}</div>
+            </div>
           </div>
           <div className="text-xs text-slate-400">
-            Outstanding {formatMoney(loan.outstanding)}
             {loan.nextDueDate ? ` · next due ${loan.nextDueDate}` : ''}
           </div>
         </div>
@@ -180,9 +242,9 @@ function LoanRow({ loan }: { loan: Loan }) {
                     <tr key={i.seq} className="border-t border-slate-100">
                       <td className="py-1.5">{i.seq}</td>
                       <td className="py-1.5 text-slate-500">{i.dueDate}</td>
-                      <td className="py-1.5 text-right">{formatMoney(i.principalDue)}</td>
-                      <td className="py-1.5 text-right">{formatMoney(i.interestDue)}</td>
-                      <td className="py-1.5 text-right">{formatMoney(i.totalDue)}</td>
+                      <td className="py-1.5 text-right">{formatMoney(i.principalDue, loan.currency)}</td>
+                      <td className="py-1.5 text-right">{formatMoney(i.interestDue, loan.currency)}</td>
+                      <td className="py-1.5 text-right">{formatMoney(i.totalDue, loan.currency)}</td>
                       <td className="py-1.5 text-right">{i.status}</td>
                     </tr>
                   ))}
@@ -226,7 +288,8 @@ function PendingApprovals() {
         {(pendingQ.data ?? []).map((loan) => (
           <div key={loan.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-white p-3 text-sm">
             <span>
-              {formatMoney(loan.principal)} · {loan.termMonths} mo · {pct(loan.annualRate)} APR
+              {formatMoney(loan.principal, loan.currency)} · {loan.termMonths} mo ·{' '}
+              {formatMoney(loan.totalInterest, loan.currency)} interest · {pct(loan.annualRate)} APR
             </span>
             <span className="flex gap-2">
               <button

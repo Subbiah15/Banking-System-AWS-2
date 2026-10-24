@@ -77,10 +77,10 @@ A **modular monolith** is the right call for a solo, deployable, resume project:
 - **Testing**: JUnit 5, Mockito, **Testcontainers** (real Postgres in tests), Spring Boot Test
 - **Observability**: Spring Actuator, Prometheus, Grafana, Logback JSON logs
 
-### Deployment (live URL for the resume)
-- **Backend + DB + Redis**: Railway or Render (managed Postgres/Redis add-ons) — easiest; or AWS (ECS/RDS/ElastiCache) if you want cloud cred on the resume.
-- **Frontend**: Vercel or Netlify.
-- **Domain + HTTPS**: free subdomain from the host, or a cheap custom domain.
+### Deployment (AWS only)
+- **Backend, database, and cache**: Amazon ECS on Fargate with an Application Load Balancer, Amazon RDS for PostgreSQL, and Amazon ElastiCache for Redis in private subnets.
+- **Frontend**: private Amazon S3 bucket served through CloudFront.
+- **Operations and security**: AWS Secrets Manager, CloudWatch, Route 53, and ACM.
 
 ---
 
@@ -89,7 +89,7 @@ A **modular monolith** is the right call for a solo, deployable, resume project:
 The single most resume-impressive decision: a **double-entry ledger**. Every movement of money creates balanced debit + credit `LedgerEntry` rows; account balances are derived/maintained from entries. This is how real banks work and signals serious domain understanding.
 
 - **User / Role** — auth identity, RBAC (CUSTOMER, ADMIN, SUPPORT)
-- **Customer** — KYC profile (name, DOB, address, verification status)
+- **Customer** — demo profile (name, DOB, address); identity verification is not enforced
 - **Account** — type (SAVINGS/CHECKING), currency, status, balance (with **optimistic locking** `@Version`)
 - **Transaction** — a business event; groups balanced `LedgerEntry` rows
 - **LedgerEntry** — `accountId`, `debit/credit`, `amount`, immutable
@@ -113,7 +113,7 @@ The single most resume-impressive decision: a **double-entry ledger**. Every mov
 
 **Phase 1 — Auth & Users** *(foundation for everything)*
 - Registration, login, JWT access+refresh, BCrypt, RBAC, refresh-token rotation in Redis.
-- KYC profile + admin verification. Frontend: signup/login/profile.
+- Admin-managed customer profiles/accounts plus signup/login/profile.
 
 **Phase 2 — Accounts & Ledger**
 - Account CRUD, double-entry `Transaction`/`LedgerEntry`, deposits/withdrawals, balance derivation, optimistic locking.
@@ -132,13 +132,13 @@ The single most resume-impressive decision: a **double-entry ledger**. Every mov
 - Frontend: loan apply + repayment schedule view + charts.
 
 **Phase 6 — Notifications, Audit, Admin**
-- Async event-driven notifications (email via Mailtrap), append-only audit log, admin portal (users, accounts, KYC, loans).
+- Async event-driven notifications (optional email), append-only audit log, admin portal (users, accounts, deposits, loans).
 
 **Phase 7 — Harden & Deploy**
 - Rate limiting, input validation, security headers, refresh-token revocation.
 - Testcontainers integration tests, ≥70% coverage on core money logic.
 - Prometheus/Grafana dashboards, structured logging.
-- Deploy backend+DB+Redis (Railway/Render), frontend (Vercel), wire HTTPS, seed demo data.
+- Provision the AWS networking and managed services; deploy the backend to ECS/Fargate and frontend to S3/CloudFront; configure HTTPS and verify health.
 - **README**: architecture diagram, live demo link, demo credentials, screenshots, GIFs.
 
 ---
@@ -172,4 +172,4 @@ BankingSystem/
 - Microservices split (API gateway + per-domain services) as a documented evolution.
 - Event sourcing for the ledger; scheduled monthly statement PDFs.
 - 2FA (TOTP), fraud-detection rules, multi-currency with FX rates.
-- Kubernetes deployment; AWS (ECS/RDS/ElastiCache) instead of PaaS.
+- Kubernetes deployment on Amazon EKS if it becomes preferable to the planned ECS/Fargate setup.

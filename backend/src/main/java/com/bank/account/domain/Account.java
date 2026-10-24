@@ -42,7 +42,10 @@ public class Account {
     private AccountType type;
 
     @Column(nullable = false, length = 3)
-    private String currency = "USD";
+    private String currency = "INR";
+
+    @Column(name = "bank_name", nullable = false, length = 40)
+    private String bankName = "SBI";
 
     @Column(nullable = false, precision = 19, scale = 4)
     private BigDecimal balance = BigDecimal.ZERO;
@@ -63,9 +66,14 @@ public class Account {
     private long version;
 
     public Account(String accountNumber, UUID ownerUserId, AccountType type, String currency) {
+        this(accountNumber, ownerUserId, type, currency, "SBI");
+    }
+
+    public Account(String accountNumber, UUID ownerUserId, AccountType type, String currency, String bankName) {
         this.accountNumber = accountNumber;
         this.ownerUserId = ownerUserId;
         this.type = type;
         this.currency = currency;
+        this.bankName = bankName;
     }
 }

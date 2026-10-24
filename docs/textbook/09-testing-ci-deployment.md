@@ -27,7 +27,7 @@ flowchart TD
 | `TransferIntegrationTest` | Money movement, idempotency, insufficient funds, beneficiaries |
 | `CardIntegrationTest` | Card issuance, lifecycle, payments, limits |
 | `PaymentIntegrationTest` | Top-up creation and idempotent fulfillment |
-| `LoanIntegrationTest` | KYC-gated applications, approval, schedules, repayment |
+| `LoanIntegrationTest` | Demo applications without KYC gating, approval, schedules, repayment |
 | `AmortizationCalculatorTest` | Loan math in isolation |
 | `SmokeApplicationTests` | Spring context starts successfully |
 
@@ -46,20 +46,25 @@ Docker Compose starts PostgreSQL and Redis. The backend Dockerfile builds a jar 
 
 Why multi-stage? Build tools do not need to be in the runtime image.
 
-## Deployment Path
+## AWS Deployment Path
 
-A realistic deployment path:
+The production target is AWS. Keep the application services in private subnets and expose only
+the Application Load Balancer and CloudFront distribution:
 
 ```mermaid
 flowchart LR
     Dev[Developer] --> Git[GitHub]
     Git --> CI[GitHub Actions]
-    CI --> Image[Docker image]
-    Image --> Host[Render/Railway/AWS]
-    Host --> DB[(Managed Postgres)]
-    Host --> Cache[(Managed Redis)]
-    Vercel[Frontend host] --> Host
+    CI --> ECR[Amazon ECR]
+    ECR --> ECS[Amazon ECS Fargate]
+    CloudFront[Amazon CloudFront] --> S3[Amazon S3 frontend]
+    ALB[Application Load Balancer] --> ECS
+    ECS --> RDS[(Amazon RDS PostgreSQL)]
+    ECS --> Redis[(Amazon ElastiCache Redis)]
 ```
+
+See [`deploy/aws/README.md`](../../deploy/aws/README.md) for the AWS deployment checklist.
+The repository currently has no AWS infrastructure-as-code or automated AWS deployment workflow.
 
 ## Common Mistakes
 

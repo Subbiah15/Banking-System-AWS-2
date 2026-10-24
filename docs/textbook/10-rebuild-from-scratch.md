@@ -58,7 +58,7 @@ This chapter gives a rebuild order. Do not start by writing every file. Build on
 
 1. Add loan and installment tables.
 2. Implement amortization calculator.
-3. Add KYC-gated loan application.
+3. Add simulated loan applications and administrator approval.
 4. Add admin approve/reject endpoints.
 5. On approval, generate schedule and disburse principal through ledger.
 6. On repayment, pay next installment through ledger.

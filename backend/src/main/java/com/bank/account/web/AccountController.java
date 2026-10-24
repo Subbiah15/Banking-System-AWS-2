@@ -38,7 +38,8 @@ public class AccountController {
     @Operation(summary = "Open a new account")
     public ResponseEntity<AccountResponse> create(@Valid @RequestBody CreateAccountRequest request) {
         AccountResponse body = AccountResponse.from(
-                accountService.createAccount(SecurityUtils.currentUserId(), request.type(), request.currency()));
+                accountService.createAccount(SecurityUtils.currentUserId(), request.type(),
+                        request.currency(), request.bankName()));
         return ResponseEntity.status(HttpStatus.CREATED).body(body);
     }
 

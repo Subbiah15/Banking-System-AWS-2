@@ -1,17 +1,23 @@
 package com.bank.customer.service;
 
+import com.bank.account.domain.Account;
+import com.bank.account.service.AccountService;
+import com.bank.auth.domain.Role;
 import com.bank.auth.domain.User;
 import com.bank.auth.repo.UserRepository;
 import com.bank.common.SecurityUtils;
 import com.bank.common.event.DomainEvent;
 import com.bank.common.event.EventActions;
 import com.bank.common.event.EventPublisher;
+import com.bank.common.exception.ConflictException;
 import com.bank.common.exception.NotFoundException;
 import com.bank.customer.domain.CustomerProfile;
 import com.bank.customer.domain.KycStatus;
+import com.bank.customer.dto.CreateCustomerRequest;
 import com.bank.customer.dto.ProfileResponse;
 import com.bank.customer.dto.UpdateProfileRequest;
 import com.bank.customer.repo.CustomerProfileRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Function;
+import java.math.BigDecimal;
 
 @Service
 public class CustomerService {
@@ -26,12 +33,17 @@ public class CustomerService {
     private final UserRepository userRepository;
     private final CustomerProfileRepository profileRepository;
     private final EventPublisher eventPublisher;
+    private final PasswordEncoder passwordEncoder;
+    private final AccountService accountService;
 
     public CustomerService(UserRepository userRepository, CustomerProfileRepository profileRepository,
-                           EventPublisher eventPublisher) {
+                           EventPublisher eventPublisher, PasswordEncoder passwordEncoder,
+                           AccountService accountService) {
         this.userRepository = userRepository;
         this.profileRepository = profileRepository;
         this.eventPublisher = eventPublisher;
+        this.passwordEncoder = passwordEncoder;
+        this.accountService = accountService;
     }
 
     @Transactional(readOnly = true)
@@ -54,6 +66,37 @@ public class CustomerService {
         if (request.addressLine1() != null) profile.setAddressLine1(request.addressLine1());
         if (request.city() != null) profile.setCity(request.city());
         if (request.country() != null) profile.setCountry(request.country());
+        return toResponse(user, profile);
+    }
+
+    @Transactional
+    public ProfileResponse createCustomer(CreateCustomerRequest request) {
+        String email = request.email().trim().toLowerCase();
+        if (userRepository.existsByEmail(email)) {
+            throw new ConflictException("Email already registered");
+        }
+
+        User user = userRepository.save(new User(
+                email, passwordEncoder.encode(request.password()), Role.CUSTOMER));
+        CustomerProfile profile = new CustomerProfile(user.getId(), request.firstName().trim(),
+                request.lastName().trim());
+        profile.setDateOfBirth(request.dateOfBirth());
+        profile.setPhone(request.phone());
+        profile.setAddressLine1(request.addressLine1());
+        profile.setCity(request.city());
+        profile.setCountry(request.country());
+        profileRepository.save(profile);
+
+        Account account = accountService.createAccount(user.getId(), request.accountType(), "INR",
+                request.bankName());
+        if (request.openingDeposit() != null && request.openingDeposit().compareTo(BigDecimal.ZERO) > 0) {
+            accountService.tellerDeposit(SecurityUtils.currentUserId(), account.getAccountNumber(),
+                    request.openingDeposit());
+        }
+
+        UUID actor = SecurityUtils.currentUserId();
+        eventPublisher.publish(DomainEvent.of(EventActions.USER_REGISTERED, actor, user.getId(),
+                "USER", user.getId().toString(), "Admin created a customer profile and bank account", true));
         return toResponse(user, profile);
     }
 
