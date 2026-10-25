@@ -30,9 +30,6 @@ export default function DashboardPage() {
 
   return (
     <AppLayout>
-      <p className="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        Demo banking only: SBI, IOB, HDFC, ICICI and Axis are simulated; no real bank is connected.
-      </p>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Accounts</h1>

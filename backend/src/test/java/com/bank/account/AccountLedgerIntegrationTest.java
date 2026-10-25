@@ -23,7 +23,7 @@ class AccountLedgerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void tellerDepositAndWithdrawAdjustBalance() throws Exception {
-        String token = registerVerified("acct1@example.com");
+        String token = register("acct1@example.com");
         JsonNode account = openAccount(token);
         String accountId = account.get("id").asText();
         String number = account.get("accountNumber").asText();
@@ -52,8 +52,55 @@ class AccountLedgerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void customerCanAddSimulatedFundsToOwnAccount() throws Exception {
+        String token = register("self.deposit@example.com");
+        JsonNode account = openAccount(token);
+        String accountId = account.get("id").asText();
+
+        mvc.perform(post("/api/v1/accounts/" + accountId + "/deposit")
+                        .header("Authorization", "Bearer " + token)
+                        .header("Idempotency-Key", "self-deposit-" + accountId)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":100.00}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance", is(100.00)));
+
+        String txns = mvc.perform(get("/api/v1/accounts/" + accountId + "/transactions")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode entries = mapper.readTree(txns);
+        assertThat(entries).hasSize(1);
+        assertThat(entries.get(0).get("type").asText()).isEqualTo("DEPOSIT");
+        assertThat(entries.get(0).get("direction").asText()).isEqualTo("CREDIT");
+    }
+
+    @Test
+    void repeatedDepositRequestWithSameIdempotencyKeyPostsOnlyOnce() throws Exception {
+        String token = register("self.deposit.retry@example.com");
+        String accountId = openAccount(token).get("id").asText();
+        String key = "deposit-retry-" + accountId;
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mvc.perform(post("/api/v1/accounts/" + accountId + "/deposit")
+                            .header("Authorization", "Bearer " + token)
+                            .header("Idempotency-Key", key)
+                            .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":100.00}"))
+                    .andExpect(status().isOk());
+        }
+
+        mvc.perform(get("/api/v1/accounts/" + accountId).header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance", is(100.00)));
+        String txns = mvc.perform(get("/api/v1/accounts/" + accountId + "/transactions")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(mapper.readTree(txns)).hasSize(1);
+    }
+
+    @Test
     void withdrawBeyondBalanceIsRejected() throws Exception {
-        String token = registerVerified("acct2@example.com");
+        String token = register("acct2@example.com");
         String accountId = openAccount(token).get("id").asText();
 
         mvc.perform(post("/api/v1/accounts/" + accountId + "/withdraw")
@@ -64,7 +111,7 @@ class AccountLedgerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void everyTransactionBalancesToZero() throws Exception {
-        String token = registerVerified("acct3@example.com");
+        String token = register("acct3@example.com");
         JsonNode account = openAccount(token);
         tellerDeposit(account.get("accountNumber").asText(), "250.50");
         mvc.perform(post("/api/v1/accounts/" + account.get("id").asText() + "/withdraw")
@@ -82,14 +129,19 @@ class AccountLedgerIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void cannotAccessAnotherUsersAccount() throws Exception {
-        String alice = registerVerified("alice.acct@example.com");
+        String alice = register("alice.acct@example.com");
         String accountId = openAccount(alice).get("id").asText();
-        String bob = registerVerified("bob.acct@example.com");
+        String bob = register("bob.acct@example.com");
 
         mvc.perform(get("/api/v1/accounts/" + accountId).header("Authorization", "Bearer " + bob))
                 .andExpect(status().isNotFound());
         mvc.perform(post("/api/v1/accounts/" + accountId + "/withdraw")
                         .header("Authorization", "Bearer " + bob)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":10.00}"))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/v1/accounts/" + accountId + "/deposit")
+                        .header("Authorization", "Bearer " + bob)
+                        .header("Idempotency-Key", "unauthorized-deposit-" + accountId)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"amount\":10.00}"))
                 .andExpect(status().isNotFound());
     }

@@ -1,8 +1,6 @@
 import { api, type Profile } from './api'
 import type { AccountType, DemoBank } from './accounts'
 
-export type KycStatus = 'PENDING' | 'VERIFIED' | 'REJECTED'
-
 export async function listAllUsers(): Promise<Profile[]> {
   const { data } = await api.get<Profile[]>('/api/v1/admin/users')
   return data
@@ -25,11 +23,6 @@ export interface CreateCustomerPayload {
 
 export async function createCustomer(payload: CreateCustomerPayload): Promise<Profile> {
   const { data } = await api.post<Profile>('/api/v1/admin/users', payload)
-  return data
-}
-
-export async function setKyc(userId: string, status: KycStatus): Promise<Profile> {
-  const { data } = await api.post<Profile>(`/api/v1/admin/users/${userId}/kyc`, { status })
   return data
 }
 

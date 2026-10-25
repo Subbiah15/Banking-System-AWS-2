@@ -1,12 +1,11 @@
 package com.bank.customer.dto;
 
-import com.bank.customer.domain.KycStatus;
-
 import java.time.LocalDate;
 import java.util.UUID;
 
 /**
- * Combined identity + KYC profile for the current user.
+ * Fictional profile details for the current user. No identity-verification status is
+ * collected, processed, or exposed by the simulator.
  */
 public record ProfileResponse(
         UUID userId,
@@ -18,7 +17,6 @@ public record ProfileResponse(
         String phone,
         String addressLine1,
         String city,
-        String country,
-        KycStatus kycStatus
+        String country
 ) {
 }

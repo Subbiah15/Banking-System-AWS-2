@@ -19,10 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
-/**
- * A virtual card linked to an account. Only non-sensitive data is stored
- * (last4/brand/expiry) — the full PAN is shown once at issuance and never persisted.
- */
+/** A fictional card visual linked to an account; no payment-network credentials exist. */
 @Entity
 @Table(name = "cards")
 @Getter

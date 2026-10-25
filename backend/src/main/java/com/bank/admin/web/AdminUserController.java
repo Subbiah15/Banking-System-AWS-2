@@ -1,6 +1,5 @@
 package com.bank.admin.web;
 
-import com.bank.admin.dto.VerifyKycRequest;
 import com.bank.customer.dto.CreateCustomerRequest;
 import com.bank.customer.dto.ProfileResponse;
 import com.bank.customer.service.CustomerService;
@@ -12,14 +11,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
@@ -46,10 +43,4 @@ public class AdminUserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(customerService.createCustomer(request));
     }
 
-    @PostMapping("/{userId}/kyc")
-    @Operation(summary = "Update optional demo identity status")
-    public ProfileResponse setKyc(@PathVariable UUID userId,
-                                  @Valid @RequestBody VerifyKycRequest request) {
-        return customerService.setKycStatus(userId, request.status());
-    }
 }

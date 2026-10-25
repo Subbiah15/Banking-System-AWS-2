@@ -33,8 +33,27 @@ class AuthFlowIntegrationTest extends AbstractIntegrationTest {
         mvc.perform(get("/api/v1/users/me").header("Authorization", "Bearer " + access))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email", is("ada@example.com")))
-                .andExpect(jsonPath("$.kycStatus", is("PENDING")))
+                .andExpect(jsonPath("$.kycStatus").doesNotExist())
                 .andExpect(jsonPath("$.role", is("CUSTOMER")));
+    }
+
+    @Test
+    void registrationAndLoginNormalizeEmailCase() throws Exception {
+        String registerBody = """
+                {"email":"ADA.NORMALIZED@EXAMPLE.COM","password":"Secret123",
+                 "firstName":"Ada","lastName":"Lovelace"}
+                """;
+        mvc.perform(post("/api/v1/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON).content(registerBody))
+                .andExpect(status().isCreated());
+
+        String loginBody = """
+                {"email":"ada.normalized@example.com","password":"Secret123"}
+                """;
+        mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON).content(loginBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists());
     }
 
     @Test

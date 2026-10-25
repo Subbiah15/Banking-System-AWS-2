@@ -12,7 +12,6 @@ import DashboardPage from './pages/DashboardPage'
 import AccountDetailPage from './pages/AccountDetailPage'
 import TransferPage from './pages/TransferPage'
 import CardsPage from './pages/CardsPage'
-import LoansPage from './pages/LoansPage'
 import AdminPage from './pages/AdminPage'
 import NotificationsPage from './pages/NotificationsPage'
 
@@ -55,14 +54,6 @@ createRoot(document.getElementById('root')!).render(
               element={
                 <ProtectedRoute>
                   <CardsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/loans"
-              element={
-                <ProtectedRoute>
-                  <LoansPage />
                 </ProtectedRoute>
               }
             />

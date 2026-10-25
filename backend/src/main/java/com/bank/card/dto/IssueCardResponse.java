@@ -1,11 +1,5 @@
 package com.bank.card.dto;
 
-/**
- * Returned only at issuance. {@code cardNumber} (the full PAN) is shown ONCE and
- * never stored or returned again.
- */
-public record IssueCardResponse(
-        CardResponse card,
-        String cardNumber
-) {
+/** A visual simulator object only; no payment-network credentials are generated. */
+public record IssueCardResponse(CardResponse card) {
 }

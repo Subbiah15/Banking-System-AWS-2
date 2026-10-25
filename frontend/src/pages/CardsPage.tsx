@@ -28,14 +28,14 @@ export default function CardsPage() {
 
   const [accountId, setAccountId] = useState('')
   const [limit, setLimit] = useState('0')
-  const [revealed, setRevealed] = useState<string | null>(null)
+  const [issued, setIssued] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const issueM = useMutation({
     mutationFn: () => issueCard(accountId || ownAccounts[0]?.id, Number(limit)),
-    onSuccess: (res) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cards'] })
-      setRevealed(res.cardNumber)
+      setIssued(true)
       setError(null)
     },
     onError: (e) => setError(apiErrorMessage(e)),
@@ -43,10 +43,13 @@ export default function CardsPage() {
 
   return (
     <AppLayout>
-      <h1 className="text-2xl font-bold tracking-tight">Cards</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Virtual card simulations</h1>
 
       <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-6">
-        <h2 className="text-lg font-semibold">Issue a virtual card</h2>
+        <h2 className="text-lg font-semibold">Create a fictional card visual</h2>
+        <p className="mt-1 text-sm text-slate-600">
+          This creates a simulator control only. No card number, payment-network credential, or real purchase is generated.
+        </p>
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <label className="block">
             <span className="mb-1 block text-sm font-medium text-slate-700">Account</span>
@@ -83,7 +86,7 @@ export default function CardsPage() {
             disabled={issueM.isPending || ownAccounts.length === 0}
             className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {issueM.isPending ? 'Issuing…' : 'Issue card'}
+            {issueM.isPending ? 'Creating…' : 'Create demo card'}
           </button>
         </div>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -97,21 +100,10 @@ export default function CardsPage() {
           </p>
         )}
 
-        {revealed && (
-          <div className="mt-4 rounded-xl border border-green-300 bg-green-50 p-4">
-            <p className="text-sm font-medium text-green-800">
-              Card issued. Copy the number now — it won't be shown again.
-            </p>
-            <p className="mt-1 font-mono text-lg tracking-widest">
-              {revealed.replace(/(.{4})/g, '$1 ').trim()}
-            </p>
-            <button
-              onClick={() => setRevealed(null)}
-              className="mt-2 text-sm text-green-700 underline"
-            >
-              I've saved it
-            </button>
-          </div>
+        {issued && (
+          <p role="status" className="mt-4 rounded-xl border border-green-300 bg-green-50 p-4 text-sm text-green-800">
+            Demo card visual created. It has no usable card number or payment-network credentials.
+          </p>
         )}
       </section>
 
@@ -164,7 +156,7 @@ function CardRow({ card }: { card: Card }) {
       <div className="flex items-center justify-between">
         <div>
           <div className="font-mono text-lg">
-            {card.brand} •••• {card.last4}
+            {card.brand} · {card.last4}
           </div>
           <div className="text-xs text-slate-400">
             exp {String(card.expMonth).padStart(2, '0')}/{card.expYear} · limit{' '}
@@ -198,7 +190,7 @@ function CardRow({ card }: { card: Card }) {
             disabled={!active || !merchant || Number(amount) <= 0 || payM.isPending}
             className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            Pay
+            Simulate purchase
           </button>
           <button
             onClick={() => freezeM.mutate()}

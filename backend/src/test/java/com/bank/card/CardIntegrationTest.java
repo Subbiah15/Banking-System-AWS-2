@@ -32,20 +32,19 @@ class CardIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void issueReturnsFullPanOnceAndStoresLast4() throws Exception {
-        String token = registerVerified("card-issue@example.com");
+    void issueReturnsOnlyFictionalCardMetadata() throws Exception {
+        String token = register("card-issue@example.com");
         String acct = openAccount(token).get("id").asText();
         JsonNode res = issueCard(token, acct, "0");
 
-        String pan = res.get("cardNumber").asText();
-        assertThat(pan).hasSize(16);
-        assertThat(res.get("card").get("last4").asText()).isEqualTo(pan.substring(12));
-        assertThat(res.get("card").get("brand").asText()).isEqualTo("VISA");
+        assertThat(res.has("cardNumber")).isFalse();
+        assertThat(res.get("card").get("last4").asText()).isEqualTo("DEMO");
+        assertThat(res.get("card").get("brand").asText()).isEqualTo("SIMULATED");
     }
 
     @Test
     void cardPaymentDebitsAccount() throws Exception {
-        String token = registerVerified("card-pay@example.com");
+        String token = register("card-pay@example.com");
         JsonNode account = openAccount(token);
         tellerDeposit(account.get("accountNumber").asText(), "200.00");
         String cardId = issueCard(token, account.get("id").asText(), "0").get("card").get("id").asText();
@@ -60,7 +59,7 @@ class CardIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void monthlyLimitIsEnforced() throws Exception {
-        String token = registerVerified("card-limit@example.com");
+        String token = register("card-limit@example.com");
         JsonNode account = openAccount(token);
         tellerDeposit(account.get("accountNumber").asText(), "1000.00");
         String cardId = issueCard(token, account.get("id").asText(), "100.00").get("card").get("id").asText();
@@ -71,7 +70,7 @@ class CardIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void frozenCardIsDeclined() throws Exception {
-        String token = registerVerified("card-frozen@example.com");
+        String token = register("card-frozen@example.com");
         JsonNode account = openAccount(token);
         tellerDeposit(account.get("accountNumber").asText(), "100.00");
         String cardId = issueCard(token, account.get("id").asText(), "0").get("card").get("id").asText();
@@ -83,7 +82,7 @@ class CardIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void insufficientFundsIsRejected() throws Exception {
-        String token = registerVerified("card-funds@example.com");
+        String token = register("card-funds@example.com");
         String acct = openAccount(token).get("id").asText();
         String cardId = issueCard(token, acct, "0").get("card").get("id").asText();
         assertThat(pay(token, cardId, "10.00")).isEqualTo(422);

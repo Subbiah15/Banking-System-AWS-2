@@ -68,8 +68,8 @@ class NotificationAuditIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void transferNotifiesSenderAndRecipient() throws Exception {
-        String sender = registerVerified("notify-sender@example.com");
-        String recipient = registerVerified("notify-recipient@example.com");
+        String sender = register("notify-sender@example.com");
+        String recipient = register("notify-recipient@example.com");
 
         JsonNode senderAcct = openAccount(sender);
         String recipientNumber = openAccount(recipient).get("accountNumber").asText();

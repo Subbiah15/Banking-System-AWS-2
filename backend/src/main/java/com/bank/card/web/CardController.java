@@ -26,7 +26,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/cards")
-@Tag(name = "Cards", description = "Virtual cards and card payments")
+@Tag(name = "Cards", description = "Fictional card visuals and simulated card activity")
 @SecurityRequirement(name = "bearerAuth")
 public class CardController {
 
@@ -37,7 +37,7 @@ public class CardController {
     }
 
     @PostMapping
-    @Operation(summary = "Issue a virtual card (full number returned once)")
+    @Operation(summary = "Create a fictional card visual (no card credentials are generated)")
     public ResponseEntity<IssueCardResponse> issue(@Valid @RequestBody IssueCardRequest request) {
         IssueCardResponse body = cardService.issue(
                 SecurityUtils.currentUserId(), request.accountId(), request.monthlyLimit());
@@ -71,7 +71,7 @@ public class CardController {
     }
 
     @PostMapping("/{cardId}/pay")
-    @Operation(summary = "Make a purchase with a card (debits the linked account)")
+    @Operation(summary = "Simulate a card purchase in the internal demo ledger")
     public CardPaymentResponse pay(@PathVariable UUID cardId, @Valid @RequestBody CardPaymentRequest request) {
         return cardService.pay(SecurityUtils.currentUserId(), cardId, request.merchant(), request.amount());
     }

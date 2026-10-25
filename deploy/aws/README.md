@@ -1,5 +1,8 @@
 # AWS deployment
 
+This is a fictional simulator, not a banking/payment service. Do not configure a
+payment gateway, accept real payment details, or use real customer financial data.
+
 AWS is the only production deployment target. This guide describes the recommended layout; it
 does not provision resources. This repository currently includes neither AWS infrastructure as
 code nor an automated AWS deployment workflow.
@@ -16,11 +19,11 @@ code nor an automated AWS deployment workflow.
   the backend task security group.
 - **Refresh tokens:** Amazon ElastiCache for Redis, reachable only from backend tasks. Enable
   encryption in transit and authentication where supported by the selected engine/configuration.
-- **Secrets and logs:** store passwords and signing/payment keys in AWS Secrets Manager and send
+- **Secrets and logs:** store passwords and signing keys in AWS Secrets Manager and send
   application logs to CloudWatch Logs. Grant the ECS task role access only to the secrets it needs.
 - **Optional integrations:** use Amazon MSK if Kafka-backed notifications/audit are required. If
   Kafka is not provisioned, set `EVENTS_ENABLED=false`. Configure SES only if outbound email is
-  required. Stripe remains an optional external payment integration, not an application host.
+  required.
 
 Place the Fargate tasks, RDS database, and Redis in private subnets. Expose only the load balancer
 to the internet. Use security groups to allow ALB-to-task traffic and task-to-database/cache
@@ -28,7 +31,7 @@ traffic; do not make RDS or Redis publicly accessible.
 
 ## Backend environment
 
-Configure these as ECS task environment variables. Put credentials and cryptographic/payment
+Configure these as ECS task environment variables. Put credentials and cryptographic
 secrets in Secrets Manager and reference them from the task definition instead of plain-text
 environment values.
 
@@ -46,7 +49,6 @@ environment values.
 | `CORS_ALLOWED_ORIGINS` | Exact HTTPS CloudFront or custom frontend origin |
 | `EVENTS_ENABLED` | `false` unless Kafka/MSK is configured |
 | `SPRING_KAFKA_BOOTSTRAP_SERVERS` | Required only when Kafka is enabled |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Optional; use test keys until payments are ready |
 
 The database user must be allowed to create/use the schema objects required by Flyway migrations.
 Apply migrations through the application's normal startup process and verify the result before

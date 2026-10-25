@@ -2,16 +2,17 @@ import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../components/AppLayout'
-import { getAccount, listTransactions, withdraw } from '../lib/accounts'
-import { confirmTopUp, createTopUp } from '../lib/payments'
+import { deposit, getAccount, listTransactions, withdraw } from '../lib/accounts'
 import { formatDateTime, formatMoney } from '../lib/format'
 import { apiErrorMessage } from '../lib/errors'
 
 export default function AccountDetailPage() {
   const { id = '' } = useParams()
   const qc = useQueryClient()
-  const [amount, setAmount] = useState('')
+  const [depositAmount, setDepositAmount] = useState('')
+  const [withdrawalAmount, setWithdrawalAmount] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
 
   const accountQ = useQuery({ queryKey: ['account', id], queryFn: () => getAccount(id) })
   const txnsQ = useQuery({ queryKey: ['account', id, 'txns'], queryFn: () => listTransactions(id) })
@@ -19,33 +20,32 @@ export default function AccountDetailPage() {
   function refresh() {
     qc.invalidateQueries({ queryKey: ['account', id] })
     qc.invalidateQueries({ queryKey: ['accounts'] })
-    setAmount('')
+    qc.invalidateQueries({ queryKey: ['account', id, 'txns'] })
+    setDepositAmount('')
+    setWithdrawalAmount('')
     setError(null)
+    setSuccess(null)
   }
 
-  const withdrawM = useMutation({
-    mutationFn: () => withdraw(id, Number(amount)),
-    onSuccess: refresh,
-    onError: (e) => setError(apiErrorMessage(e)),
-  })
-  // Top-up via the payment gateway: create an intent then settle it. The simulated
-  // gateway confirms here; with real Stripe this is where Stripe.js would confirm.
-  const topUpM = useMutation({
-    mutationFn: async () => {
-      const res = await createTopUp(id, Number(amount))
-      if (res.manualConfirm) {
-        await confirmTopUp(res.paymentId)
-      } else {
-        throw new Error('Complete the payment with Stripe to finish this top-up')
-      }
+  const depositM = useMutation({
+    mutationFn: () => deposit(id, Number(depositAmount)),
+    onSuccess: (updatedAccount) => {
+      refresh()
+      setSuccess(`Added ${formatMoney(depositAmount, updatedAccount.currency)} to this account.`)
     },
+    onError: (e) => {
+      setError(apiErrorMessage(e))
+      setSuccess(null)
+    },
+  })
+  const withdrawM = useMutation({
+    mutationFn: () => withdraw(id, Number(withdrawalAmount)),
     onSuccess: refresh,
     onError: (e) => setError(apiErrorMessage(e)),
   })
-
   const account = accountQ.data
-  const busy = withdrawM.isPending || topUpM.isPending
-  const valid = Number(amount) > 0
+  const depositValid = Number(depositAmount) > 0
+  const withdrawalValid = Number(withdrawalAmount) > 0
 
   return (
     <AppLayout>
@@ -69,33 +69,58 @@ export default function AccountDetailPage() {
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium">{account.status}</span>
             </div>
 
-            <div className="mt-6 flex flex-wrap items-end gap-3">
+            <div className="mt-6 rounded-xl bg-slate-50 p-4">
+              <h2 className="font-semibold">Add money</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Add simulated funds directly to this account. No real payment is made.
+              </p>
+              <div className="mt-3 flex flex-wrap items-end gap-3">
+                <label className="block">
+                  <span className="mb-1 block text-sm font-medium text-slate-700">Amount</span>
+                  <input
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    value={depositAmount}
+                    onChange={(e) => {
+                      setDepositAmount(e.target.value)
+                      setSuccess(null)
+                      setError(null)
+                    }}
+                    className="w-40 rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
+                    placeholder="0.00"
+                  />
+                </label>
+                <button
+                  onClick={() => depositM.mutate()}
+                  disabled={!depositValid || depositM.isPending}
+                  className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  {depositM.isPending ? 'Adding…' : 'Add simulated money'}
+                </button>
+              </div>
+              {success && <p role="status" className="mt-3 text-sm text-green-700">{success}</p>}
+            </div>
+
+            <div className="mt-4 flex flex-wrap items-end gap-3">
               <label className="block">
-                <span className="mb-1 block text-sm font-medium text-slate-700">Amount</span>
+                <span className="mb-1 block text-sm font-medium text-slate-700">Withdrawal amount</span>
                 <input
                   type="number"
-                  min="0"
+                  min="0.01"
                   step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
+                  value={withdrawalAmount}
+                  onChange={(e) => setWithdrawalAmount(e.target.value)}
                   className="w-40 rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-slate-900"
                   placeholder="0.00"
                 />
               </label>
               <button
-                onClick={() => topUpM.mutate()}
-                disabled={!valid || busy}
-                className="rounded-lg bg-green-600 px-4 py-2 font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                title="Add money via the payment gateway (card)"
-              >
-                Add money
-              </button>
-              <button
                 onClick={() => withdrawM.mutate()}
-                disabled={!valid || busy}
+                disabled={!withdrawalValid || withdrawM.isPending}
                 className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
               >
-                Withdraw
+                {withdrawM.isPending ? 'Processing…' : 'Simulate withdrawal'}
               </button>
             </div>
             {error && <p className="mt-3 text-sm text-red-600">{error}</p>}

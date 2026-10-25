@@ -30,7 +30,7 @@ class TransferIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void transferMovesMoneyBetweenAccounts() throws Exception {
-        String token = registerVerified("tx-move@example.com");
+        String token = register("tx-move@example.com");
         JsonNode a = openAccount(token);
         JsonNode b = openAccount(token);
         tellerDeposit(a.get("accountNumber").asText(), "200.00");
@@ -49,7 +49,7 @@ class TransferIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void idempotentKeyPostsTransferOnce() throws Exception {
-        String token = registerVerified("tx-idem@example.com");
+        String token = register("tx-idem@example.com");
         JsonNode a = openAccount(token);
         JsonNode b = openAccount(token);
         tellerDeposit(a.get("accountNumber").asText(), "100.00");
@@ -68,7 +68,7 @@ class TransferIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void insufficientFundsRejected() throws Exception {
-        String token = registerVerified("tx-insuf@example.com");
+        String token = register("tx-insuf@example.com");
         JsonNode a = openAccount(token);
         JsonNode b = openAccount(token);
         mvc.perform(post("/api/v1/transfers")
@@ -80,7 +80,7 @@ class TransferIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void destinationNotFoundAndSameAccountRejected() throws Exception {
-        String token = registerVerified("tx-bad@example.com");
+        String token = register("tx-bad@example.com");
         JsonNode a = openAccount(token);
         tellerDeposit(a.get("accountNumber").asText(), "10.00");
 
@@ -99,9 +99,9 @@ class TransferIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void cannotTransferFromUnownedAccount() throws Exception {
-        String alice = registerVerified("tx-alice@example.com");
+        String alice = register("tx-alice@example.com");
         JsonNode aliceAcct = openAccount(alice);
-        String bob = registerVerified("tx-bob@example.com");
+        String bob = register("tx-bob@example.com");
         JsonNode bobAcct = openAccount(bob);
 
         mvc.perform(post("/api/v1/transfers")
@@ -114,7 +114,7 @@ class TransferIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void beneficiaryCrud() throws Exception {
-        String token = registerVerified("tx-ben@example.com");
+        String token = register("tx-ben@example.com");
         String acctNo = openAccount(token).get("accountNumber").asText();
         String body = "{\"nickname\":\"Savings\",\"accountNumber\":\"" + acctNo + "\"}";
 

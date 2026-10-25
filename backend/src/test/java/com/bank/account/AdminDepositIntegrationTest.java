@@ -26,7 +26,7 @@ class AdminDepositIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void customerSelfDepositEndpointIsGone() throws Exception {
-        String token = registerVerified("self-deposit-gone@example.com");
+        String token = register("self-deposit-gone@example.com");
         String accountId = openAccount(token).get("id").asText();
         mvc.perform(post("/api/v1/accounts/" + accountId + "/deposit")
                         .header("Authorization", "Bearer " + token)
@@ -36,7 +36,7 @@ class AdminDepositIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void customerCannotUseTellerDeposit() throws Exception {
-        String token = registerVerified("teller-denied@example.com");
+        String token = register("teller-denied@example.com");
         String number = openAccount(token).get("accountNumber").asText();
         // The customer's own token may not hit the admin teller endpoint.
         mvc.perform(post("/api/v1/admin/accounts/deposit").header("Authorization", "Bearer " + token)
@@ -47,7 +47,7 @@ class AdminDepositIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void adminTellerDepositCreditsAccount() throws Exception {
-        String token = registerVerified("teller-ok@example.com");
+        String token = register("teller-ok@example.com");
         JsonNode account = openAccount(token);
         tellerDeposit(account.get("accountNumber").asText(), "250.00");
 
@@ -59,7 +59,7 @@ class AdminDepositIntegrationTest extends AbstractIntegrationTest {
 
     @Test
     void adminCanListCustomerAccounts() throws Exception {
-        String token = registerVerified("teller-list@example.com");
+        String token = register("teller-list@example.com");
         String number = openAccount(token).get("accountNumber").asText();
         String admin = adminToken();
 

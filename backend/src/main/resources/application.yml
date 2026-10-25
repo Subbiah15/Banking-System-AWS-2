@@ -83,10 +83,6 @@ app:
     admin-email: ${ADMIN_EMAIL:admin@bank.local}
     admin-password: ${ADMIN_PASSWORD:Admin123!}
     demo: ${SEED_DEMO:false}
-  stripe:
-    # When secret-key is blank the app uses the simulated payment gateway.
-    secret-key: ${STRIPE_SECRET_KEY:}
-    webhook-secret: ${STRIPE_WEBHOOK_SECRET:}
   events:
     topic: ${EVENTS_TOPIC:banking.events}
     # Set EVENTS_ENABLED=false to run without Kafka (publisher no-ops, consumers off).

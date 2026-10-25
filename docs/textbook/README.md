@@ -1,5 +1,11 @@
 # Banking System Textbook
 
+> **Historical documentation:** this book was written for the previous product scope and
+> contains descriptions of payment-gateway and loan code that has since been removed.
+> It is not an implementation guide for the current simulator. Use the approved
+> [`../../.azure/project-plan.md`](../../.azure/project-plan.md) and current
+> [`../../README.md`](../../README.md) as the source of truth.
+
 This documentation set turns the Banking System project into a software-engineering walkthrough. It is written for a computer-science student who wants to rebuild the application without AI by understanding the architecture, the folders, the files, the dependencies, and the runtime flows.
 
 ## How to Read This Book

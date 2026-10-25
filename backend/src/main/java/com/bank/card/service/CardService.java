@@ -30,13 +30,12 @@ import java.time.YearMonth;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class CardService {
 
-    private static final String TEST_BIN = "4242"; // VISA test BIN
-    private static final String BRAND = "VISA";
+    private static final String DEMO_TAG = "DEMO";
+    private static final String BRAND = "SIMULATED";
 
     private final CardRepository cardRepository;
     private final CardPaymentRepository cardPaymentRepository;
@@ -63,13 +62,12 @@ public class CardService {
         if (account.getStatus() != AccountStatus.ACTIVE) {
             throw new IllegalArgumentException("Account is not active");
         }
-        String pan = generatePan();
         YearMonth expiry = YearMonth.now(ZoneOffset.UTC).plusYears(3);
-        Card card = new Card(accountId, userId, pan.substring(pan.length() - 4), BRAND,
+        Card card = new Card(accountId, userId, DEMO_TAG, BRAND,
                 expiry.getMonthValue(), expiry.getYear(),
                 monthlyLimit == null ? BigDecimal.ZERO : monthlyLimit);
         cardRepository.save(card);
-        return new IssueCardResponse(CardResponse.from(card), pan);
+        return new IssueCardResponse(CardResponse.from(card));
     }
 
     @Transactional(readOnly = true)
@@ -134,37 +132,4 @@ public class CardService {
                 .orElseThrow(() -> new NotFoundException("Card not found"));
     }
 
-    /** Builds a Luhn-valid card number with a VISA test BIN. */
-    private String generatePan() {
-        int[] digits = new int[16];
-        for (int i = 0; i < TEST_BIN.length(); i++) {
-            digits[i] = TEST_BIN.charAt(i) - '0';
-        }
-        for (int i = TEST_BIN.length(); i < 15; i++) {
-            digits[i] = ThreadLocalRandom.current().nextInt(10);
-        }
-        digits[15] = luhnCheckDigit(digits);
-        StringBuilder sb = new StringBuilder(16);
-        for (int d : digits) {
-            sb.append(d);
-        }
-        return sb.toString();
-    }
-
-    private int luhnCheckDigit(int[] digits) {
-        int sum = 0;
-        // Positions 0..14 hold the payload; the check digit sits at index 15, so the
-        // rightmost payload digit (index 14) is doubled.
-        for (int i = 14; i >= 0; i--) {
-            int d = digits[i];
-            if ((14 - i) % 2 == 0) {
-                d *= 2;
-                if (d > 9) {
-                    d -= 9;
-                }
-            }
-            sum += d;
-        }
-        return (10 - (sum % 10)) % 10;
-    }
 }

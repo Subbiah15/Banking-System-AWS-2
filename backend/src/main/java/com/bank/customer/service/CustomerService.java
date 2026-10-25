@@ -12,7 +12,6 @@ import com.bank.common.event.EventPublisher;
 import com.bank.common.exception.ConflictException;
 import com.bank.common.exception.NotFoundException;
 import com.bank.customer.domain.CustomerProfile;
-import com.bank.customer.domain.KycStatus;
 import com.bank.customer.dto.CreateCustomerRequest;
 import com.bank.customer.dto.ProfileResponse;
 import com.bank.customer.dto.UpdateProfileRequest;
@@ -110,18 +109,6 @@ public class CustomerService {
                 .toList();
     }
 
-    @Transactional
-    public ProfileResponse setKycStatus(UUID userId, KycStatus status) {
-        User user = requireUser(userId);
-        CustomerProfile profile = requireProfile(userId);
-        profile.setKycStatus(status);
-        String action = status == KycStatus.VERIFIED ? EventActions.KYC_VERIFIED : EventActions.KYC_REJECTED;
-        UUID actor = SecurityUtils.currentUserId();
-        eventPublisher.publish(DomainEvent.of(action, actor, userId, "KYC", userId.toString(),
-                "Your identity verification is now " + status, true));
-        return toResponse(user, profile);
-    }
-
     private User requireUser(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
@@ -143,7 +130,6 @@ public class CustomerService {
                 p == null ? null : p.getPhone(),
                 p == null ? null : p.getAddressLine1(),
                 p == null ? null : p.getCity(),
-                p == null ? null : p.getCountry(),
-                p == null ? null : p.getKycStatus());
+                p == null ? null : p.getCountry());
     }
 }

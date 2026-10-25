@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/users")
-@Tag(name = "Users", description = "Current user identity and KYC profile")
+@Tag(name = "Users", description = "Current user profile")
 @SecurityRequirement(name = "bearerAuth")
 public class CustomerController {
 
@@ -33,7 +33,7 @@ public class CustomerController {
     }
 
     @PutMapping("/me/profile")
-    @Operation(summary = "Update the current user's KYC profile")
+    @Operation(summary = "Update the current user's fictional profile details")
     public ProfileResponse updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
         return customerService.updateProfile(SecurityUtils.currentUserId(), request);
     }

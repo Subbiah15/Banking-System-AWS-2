@@ -30,12 +30,11 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-6">
             <Link to="/" className="font-semibold">
-              🏦 Banking System
+              Banking Simulator
             </Link>
             {navLink('/', 'Dashboard')}
             {navLink('/transfer', 'Transfer')}
             {navLink('/cards', 'Cards')}
-            {navLink('/loans', 'Loans')}
             {navLink('/profile', 'Profile')}
             {user?.role === 'ADMIN' && navLink('/admin', 'Admin')}
           </div>
@@ -58,6 +57,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
+      <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs font-medium text-amber-950">
+        Simulation only · fictional balances and activity · no real money, banks, or payment networks
+      </div>
       <main className="mx-auto max-w-4xl px-6 py-8">{children}</main>
     </div>
   )

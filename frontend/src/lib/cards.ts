@@ -16,7 +16,6 @@ export interface Card {
 
 export interface IssuedCard {
   card: Card
-  cardNumber: string
 }
 
 export interface CardChargeResult {

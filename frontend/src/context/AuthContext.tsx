@@ -53,13 +53,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function login(email: string, password: string) {
     const tokens = await loginApi(email, password)
     tokenStore.set(tokens.accessToken, tokens.refreshToken)
-    setUser(await getMe())
+    try {
+      setUser(await getMe())
+    } catch (error) {
+      tokenStore.clear()
+      setUser(null)
+      throw error
+    }
   }
 
   async function register(payload: RegisterPayload) {
     const tokens = await registerApi(payload)
     tokenStore.set(tokens.accessToken, tokens.refreshToken)
-    setUser(await getMe())
+    try {
+      setUser(await getMe())
+    } catch (error) {
+      tokenStore.clear()
+      setUser(null)
+      throw error
+    }
   }
 
   async function logout() {

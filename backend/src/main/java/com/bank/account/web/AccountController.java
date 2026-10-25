@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -55,6 +56,17 @@ public class AccountController {
     @Operation(summary = "Get one of my accounts")
     public AccountResponse get(@PathVariable UUID accountId) {
         return AccountResponse.from(accountService.getAccount(SecurityUtils.currentUserId(), accountId));
+    }
+
+    @PostMapping("/{accountId}/deposit")
+    @Operation(summary = "Add simulated funds to my account",
+            description = "Supply an Idempotency-Key header to make retries safe.")
+    public AccountResponse deposit(@PathVariable UUID accountId, @Valid @RequestBody AmountRequest request,
+                                   @RequestHeader(value = "Idempotency-Key", required = false)
+                                   String idempotencyKey) {
+        return AccountResponse.from(
+                accountService.simulateDeposit(
+                        SecurityUtils.currentUserId(), accountId, request.amount(), idempotencyKey));
     }
 
     @PostMapping("/{accountId}/withdraw")

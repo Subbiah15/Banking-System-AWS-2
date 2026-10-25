@@ -42,6 +42,13 @@ export async function createAccount(type: AccountType, bankName: DemoBank): Prom
   return data
 }
 
+export async function deposit(id: string, amount: number): Promise<Account> {
+  const { data } = await api.post<Account>(`/api/v1/accounts/${id}/deposit`, { amount }, {
+    headers: { 'Idempotency-Key': crypto.randomUUID() },
+  })
+  return data
+}
+
 export async function withdraw(id: string, amount: number): Promise<Account> {
   const { data } = await api.post<Account>(`/api/v1/accounts/${id}/withdraw`, { amount })
   return data

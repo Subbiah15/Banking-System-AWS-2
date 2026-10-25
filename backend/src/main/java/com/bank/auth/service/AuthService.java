@@ -18,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -46,7 +47,7 @@ public class AuthService {
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
-        String email = request.email().toLowerCase();
+        String email = normalizeEmail(request.email());
         if (userRepository.existsByEmail(email)) {
             throw new ConflictException("Email already registered");
         }
@@ -61,7 +62,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public AuthResponse login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.email().toLowerCase())
+        User user = userRepository.findByEmail(normalizeEmail(request.email()))
                 .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
         if (!user.isEnabled() || !passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid credentials");
@@ -90,5 +91,9 @@ public class AuthService {
         String access = jwtService.generateAccessToken(user);
         String refresh = refreshTokenService.issue(user.getId());
         return AuthResponse.bearer(access, refresh, jwtService.accessTokenTtlSeconds());
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 }

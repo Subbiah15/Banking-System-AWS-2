@@ -96,6 +96,18 @@ public class AccountService {
     }
 
     @Transactional
+    public Account simulateDeposit(UUID userId, UUID accountId, BigDecimal amount, String idempotencyKey) {
+        Account account = requireActiveAccount(userId, accountId);
+        Account system = systemAccount(account.getCurrency());
+        ledgerService.post(TransactionType.DEPOSIT, "Simulated funds added by account owner", idempotencyKey, List.of(
+                PostingLine.credit(account.getId(), amount),
+                PostingLine.debit(system.getId(), amount)));
+        eventPublisher.publish(DomainEvent.userAction(EventActions.DEPOSIT, userId, "ACCOUNT",
+                accountId.toString(), "Simulated funds added to " + account.getAccountNumber()));
+        return account;
+    }
+
+    @Transactional
     public Account withdraw(UUID userId, UUID accountId, BigDecimal amount) {
         Account account = requireActiveAccount(userId, accountId);
         Account system = systemAccount(account.getCurrency());
