@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import AppLayout from '../components/AppLayout'
+import { useAuth } from '../context/AuthContext'
 import { listAccounts } from '../lib/accounts'
 import {
   cancelCard,
@@ -22,6 +23,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default function CardsPage() {
   const qc = useQueryClient()
+  const { user } = useAuth()
   const accountsQ = useQuery({ queryKey: ['accounts'], queryFn: listAccounts })
   const cardsQ = useQuery({ queryKey: ['cards'], queryFn: listCards })
   const ownAccounts = (accountsQ.data ?? []).filter((a) => a.type !== 'SYSTEM')
@@ -109,20 +111,30 @@ export default function CardsPage() {
 
       <div className="mt-6 space-y-3">
         {cardsQ.isLoading && <p className="text-slate-500">Loading cards…</p>}
+        {cardsQ.isError && (
+          <p role="alert" className="text-sm text-red-600">
+            Could not load your cards. Refresh the page and try again.
+          </p>
+        )}
         {!cardsQ.isLoading && (cardsQ.data?.length ?? 0) === 0 && (
           <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
             No cards yet.
           </div>
         )}
         {(cardsQ.data ?? []).map((card) => (
-          <CardRow key={card.id} card={card} />
+          <CardRow key={card.id} card={card} holderName={cardHolderName(user)} />
         ))}
       </div>
     </AppLayout>
   )
 }
 
-function CardRow({ card }: { card: Card }) {
+function cardHolderName(user: ReturnType<typeof useAuth>['user']): string {
+  const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
+  return name || user?.email || 'Demo User'
+}
+
+function CardRow({ card, holderName }: { card: Card; holderName: string }) {
   const qc = useQueryClient()
   const [merchant, setMerchant] = useState('')
   const [amount, setAmount] = useState('')
@@ -153,19 +165,40 @@ function CardRow({ card }: { card: Card }) {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-mono text-lg">
-            {card.brand} · {card.last4}
+      <div className="max-w-md rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 p-5 text-white shadow-lg">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
+              Banking Simulator
+            </p>
+            <p className="mt-1 text-[10px] font-medium uppercase tracking-[0.18em] text-amber-300">
+              Demo card · not for payment
+            </p>
           </div>
-          <div className="text-xs text-slate-400">
-            exp {String(card.expMonth).padStart(2, '0')}/{card.expYear} · limit{' '}
-            {Number(card.monthlyLimit) > 0 ? formatMoney(card.monthlyLimit) : 'none'}
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_STYLES[card.status]}`}
+          >
+            {card.status}
+          </span>
+        </div>
+        <div className="mt-7 font-mono text-xl tracking-[0.16em] sm:text-2xl" aria-label="Masked demo card number ending in 1234">
+          •••• &nbsp;•••• &nbsp;•••• &nbsp;1234
+        </div>
+        <div className="mt-6 grid grid-cols-[1fr_auto] items-end gap-4">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-widest text-slate-400">Card holder</p>
+            <p className="mt-1 truncate text-sm font-medium uppercase tracking-wide">{holderName}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-widest text-slate-400">Expires</p>
+            <p className="mt-1 font-mono text-sm">
+              {String(card.expMonth).padStart(2, '0')}/{String(card.expYear).slice(-2)}
+            </p>
           </div>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${STATUS_STYLES[card.status]}`}>
-          {card.status}
-        </span>
+      </div>
+      <div className="mt-3 text-xs text-slate-500">
+        Simulated card · limit {Number(card.monthlyLimit) > 0 ? formatMoney(card.monthlyLimit) : 'none'}
       </div>
 
       {card.status !== 'CANCELLED' && (
