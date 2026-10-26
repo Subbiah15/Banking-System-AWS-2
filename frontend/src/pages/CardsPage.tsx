@@ -27,6 +27,9 @@ export default function CardsPage() {
   const accountsQ = useQuery({ queryKey: ['accounts'], queryFn: listAccounts })
   const cardsQ = useQuery({ queryKey: ['cards'], queryFn: listCards })
   const ownAccounts = (accountsQ.data ?? []).filter((a) => a.type !== 'SYSTEM')
+  const cards = cardsQ.data ?? []
+  const currentCard = [...cards].reverse().find((card) => card.status !== 'CANCELLED')
+    ?? cards[cards.length - 1]
 
   const [accountId, setAccountId] = useState('')
   const [limit, setLimit] = useState('0')
@@ -85,10 +88,14 @@ export default function CardsPage() {
           </label>
           <button
             onClick={() => issueM.mutate()}
-            disabled={issueM.isPending || ownAccounts.length === 0}
+            disabled={issueM.isPending || ownAccounts.length === 0 || cardsQ.isLoading || cardsQ.isError || Boolean(currentCard && currentCard.status !== 'CANCELLED')}
             className="rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-50"
           >
-            {issueM.isPending ? 'Creating…' : 'Create demo card'}
+            {issueM.isPending
+              ? 'Creating…'
+              : currentCard && currentCard.status !== 'CANCELLED'
+                ? 'One demo card already created'
+                : 'Create demo card'}
           </button>
         </div>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
@@ -116,14 +123,12 @@ export default function CardsPage() {
             Could not load your cards. Refresh the page and try again.
           </p>
         )}
-        {!cardsQ.isLoading && (cardsQ.data?.length ?? 0) === 0 && (
+        {!cardsQ.isLoading && cards.length === 0 && (
           <div className="rounded-2xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
             No cards yet.
           </div>
         )}
-        {(cardsQ.data ?? []).map((card) => (
-          <CardRow key={card.id} card={card} holderName={cardHolderName(user)} />
-        ))}
+        {currentCard && <CardRow card={currentCard} holderName={cardHolderName(user)} />}
       </div>
     </AppLayout>
   )
