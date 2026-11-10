@@ -89,6 +89,12 @@ Integration tests that use Testcontainers require Docker. The project plan calls
 additional tests around concurrency/idempotency, wallet flows, savings and budgets,
 admin access, persistence, and end-to-end verification; these remain incomplete.
 
+## Minikube
+
+For Docker Hub images, Kubernetes manifests, and Minikube deployment instructions, see
+[`deploy/kubernetes/README.md`](./deploy/kubernetes/README.md). PostgreSQL uses the
+official image with persistent storage; the database does not need its own custom image.
+
 ## Repository layout
 
 ```text
